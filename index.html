@@ -154,7 +154,7 @@ body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;bac
     </div>
     <div class="proxy-banner" id="proxyBanner">
       <span>⚡ CORS Proxy:</span>
-      <input id="proxyInput" type="url" https://twilight-mountain-1b49.microsoftportharcourt.workers.dev/?url=" spellcheck="false">
+      <input id="proxyInput" type="url" value="https://twilight-mountain-1b49.microsoftportharcourt.workers.dev/?url=" spellcheck="false" placeholder="Paste Worker URL here">
       <button class="btn-set" id="btnSetProxy">Apply</button>
       <span id="proxyStatus">No proxy set — Pictimo/APM feeds need proxy to display</span>
     </div>
@@ -198,7 +198,7 @@ body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;bac
     <div id="alertLog" style="max-height:190px;flex:none;overflow-y:auto;scrollbar-width:thin">
       <div class="alert-log-wrap"><div class="al-none">Monitoring… no alerts yet.</div></div>
     </div>
-    <div class="s-head">🛠 Setup &amp; Sources</div>
+    <div class="s-head">🛠 Setup & Sources</div>
     <div class="s-body">
       <div class="s-section">
         <h3 id="sh1">Step 1 — Deploy Free CORS Proxy</h3>
@@ -239,7 +239,6 @@ async function handle(req) {
           <ul>
             <li><strong>APM Terminals Apapa</strong> ✅ — Official gate images. Referer-gated → needs proxy.</li>
             <li><strong>Pictimo Nigeria cams</strong> ✅ — Real IP cameras (Lagos ×5, Abuja ×1, PH ×1, Orerokpe ×1). CORS-blocked → needs proxy.</li>
-            <li><strong>WorldCam.eu Apapa</strong> ⚠️ — Iframe embed of Apapa cam page (may show preview).</li>
             <li><strong>Google Maps Traffic</strong> ✅ — Real-time traffic overlay, always works. No proxy needed.</li>
             <li><strong>YouTube Live TV</strong> ✅ — Always works in iframe. Channels TV, NTA, Arise.</li>
             <li><strong>NaijaCams.com</strong> ❌ — DNS dead as of April 2026.</li>
@@ -255,30 +254,12 @@ async function handle(req) {
           <ul>
             <li>Frame drawn to 120×68 hidden canvas</li>
             <li>Per-pixel grayscale delta computed vs previous frame</li>
-            <li>&gt;10% pixels changed → Heavy traffic alert</li>
-            <li>Brightness &lt;18 OR 30s no motion → Signal lost alert</li>
-            <li>Night (20:00–05:00 WAT) + spike &gt;18% → Security alert</li>
+            <li>>10% pixels changed → Heavy traffic alert</li>
+            <li>Brightness <18 OR 30s no motion → Signal lost alert</li>
+            <li>Night (20:00–05:00 WAT) + spike >18% → Security alert</li>
             <li>Toast notification + audio tone fired (needs user interaction first)</li>
           </ul>
           <p style="margin-top:5px">Google Maps and YouTube tiles show HUD status only (no pixel analysis inside iframes).</p>
-        </div>
-      </div>
-      <div class="s-section">
-        <h3 id="sh4" class="closed">Full Camera Inventory (29 feeds)</h3>
-        <div id="sc4" class="s-content" style="display:none">
-          <ul>
-            <li>2× APM Terminals Apapa (inbound + outbound) — img</li>
-            <li>7× Pictimo Lagos IP cameras — img (needs proxy)</li>
-            <li>1× Pictimo Abuja camera — img (needs proxy)</li>
-            <li>1× Pictimo Port Harcourt — img (needs proxy)</li>
-            <li>1× Pictimo Orerokpe — img (needs proxy)</li>
-            <li>2× WorldCam Apapa iframes</li>
-            <li>10× Lagos roads — Google Maps traffic</li>
-            <li>3× Abuja — Google Maps traffic</li>
-            <li>2× Port Harcourt — Google Maps traffic</li>
-            <li>Kano, Warri, Benin City, Ibadan, Enugu, Onitsha — Google Maps</li>
-            <li>3× YouTube Live: Channels TV, NTA, Arise News</li>
-          </ul>
         </div>
       </div>
     </div>
@@ -304,8 +285,8 @@ const CAMS = [
   {id:'pic-ab1',label:'Abuja · IP Camera 01 (Pictimo)',city:'Abuja',area:'Abuja',kind:'img-proxy',img:'https://images.pictimo.com/storage/live_thumbs/16815.jpg',src:'https://www.pictimo.com/nigeria/abuja/16815/webcam-ip-camera-abuja',srcName:'Pictimo.com',refreshMs:10000,tags:['abuja','cctv','ip cam','pictimo','road','traffic'],lat:9.0723,lng:7.4913,note:'Pictimo Abuja IP cam. 10s refresh. Needs proxy.',qual:'live'},
   {id:'pic-ph1',label:'Port Harcourt · IP Camera (Pictimo)',city:'Port Harcourt',area:'PH',kind:'img-proxy',img:'https://images.pictimo.com/storage/live_thumbs/15445.jpg',src:'https://www.pictimo.com/nigeria/port-harcourt/15445/webcam-ip-camera-port-harcourt',srcName:'Pictimo.com',refreshMs:10000,tags:['port harcourt','rivers','cctv','ip cam','pictimo','traffic'],lat:4.8156,lng:7.0498,note:'Pictimo Port Harcourt cam. Needs proxy.',qual:'live'},
   {id:'pic-or1',label:'Orerokpe · IP Camera (Pictimo)',city:'Orerokpe',area:'Delta',kind:'img-proxy',img:'https://images.pictimo.com/storage/live_thumbs/24268.jpg',src:'https://www.pictimo.com/nigeria/orerokpe/24268/webcam-ip-camera-orerokpe',srcName:'Pictimo.com',refreshMs:10000,tags:['orerokpe','delta','cctv','ip cam','pictimo','traffic'],lat:5.6372,lng:5.8906,note:'Pictimo Orerokpe Delta State cam. Needs proxy.',qual:'live'},
-  {id:'wc-in',label:'Lagos · Apapa Inbound (WorldCam)',city:'Lagos',area:'Apapa',kind:'iframe',iframeSrc:'https://worldcam.eu/webcams/africa/nigeria/26751-lagos-apapa-container-terminal-inbound',src:'https://worldcam.eu/webcams/africa/nigeria/26751-lagos-apapa-container-terminal-inbound',srcName:'WorldCam.eu',tags:['lagos','apapa','port','worldcam','inbound','container'],lat:6.4318,lng:3.3432,note:'WorldCam page for APM Terminals inbound gate.',qual:'embed'},
-  {id:'wc-out',label:'Lagos · Apapa Outbound (WorldCam)',city:'Lagos',area:'Apapa',kind:'iframe',iframeSrc:'https://worldcam.eu/webcams/africa/nigeria/26750-lagos-apapa-container-terminal-outbound',src:'https://worldcam.eu/webcams/africa/nigeria/26750-lagos-apapa-container-terminal-outbound',srcName:'WorldCam.eu',tags:['lagos','apapa','port','worldcam','outbound','container'],lat:6.4322,lng:3.3434,note:'WorldCam page for APM Terminals outbound gate.',qual:'embed'},
+  {id:'gm-ph-trans',label:'Port Harcourt · Trans Amadi Ind. Layout',city:'Port Harcourt',area:'Trans Amadi',kind:'gmap',mapQ:'4.8115,7.0375',mapZ:15,src:'https://www.google.com/maps/@6.5561,3.3239,14z/data=!5m1!1e14',srcName:'Google Maps Traffic',tags:['port harcourt','trans amadi','traffic','rivers'],lat:4.8115,lng:7.0375,note:'Trans Amadi industrial zone traffic.',qual:'traffic'},
+  {id:'gm-ph-waterlines',label:'Port Harcourt · Waterlines Junction',city:'Port Harcourt',area:'Waterlines',kind:'gmap',mapQ:'4.8235,7.0098',mapZ:16,src:'https://www.google.com/maps/@6.5561,3.3239,14z/data=!5m1!1e15',srcName:'Google Maps Traffic',tags:['port harcourt','waterlines','traffic','junction'],lat:4.8235,lng:7.0098,note:'Waterlines junction live traffic.',qual:'traffic'},
   {id:'gm-3mb',label:'Lagos · Third Mainland Bridge',city:'Lagos',area:'3MB',kind:'gmap',mapQ:'6.5145,3.3944',mapZ:15,src:'https://www.google.com/maps/@6.5145,3.3944,15z/data=!5m1!1e1',srcName:'Google Maps Traffic',tags:['lagos','third mainland','bridge','traffic','road'],lat:6.5145,lng:3.3944,note:'Real-time traffic — Third Mainland Bridge.',qual:'traffic'},
   {id:'gm-lekki',label:'Lagos · Lekki-Ikoyi Link Bridge',city:'Lagos',area:'Lekki',kind:'gmap',mapQ:'6.4481,3.4219',mapZ:15,src:'https://www.google.com/maps/@6.4481,3.4219,15z/data=!5m1!1e1',srcName:'Google Maps Traffic',tags:['lagos','lekki','ikoyi','bridge','traffic'],lat:6.4481,lng:3.4219,note:'Lekki-Ikoyi Bridge live traffic.',qual:'traffic'},
   {id:'gm-marina',label:'Lagos · Carter Bridge / Marina Rd',city:'Lagos',area:'Lagos Island',kind:'gmap',mapQ:'6.4542,3.3947',mapZ:15,src:'https://www.google.com/maps/@6.4542,3.3947,15z/data=!5m1!1e1',srcName:'Google Maps Traffic',tags:['lagos','marina','carter','bridge','island'],lat:6.4542,lng:3.3947,note:'Marina Road & Carter Bridge traffic.',qual:'traffic'},
@@ -415,7 +396,7 @@ function buildCard(cam){
     mediaEl.className='feed-media';
     mediaEl.loading='lazy';
     mediaEl.allow='fullscreen';
-    mediaEl.src='https://maps.google.com/maps?q='+cam.mapQ+'&z='+cam.mapZ+'&layer=t&output=embed';
+    mediaEl.src='https://www.google.com/maps/@6.5561,3.3239,14z/data=!5m1!1e16';
     mediaEl.addEventListener('load',()=>{shimEl.style.display='none';setHUD(cam.id,'Traffic layer live','ok',watTime());setSig(cam.id,'Google Maps');setAlt(cam.id,'Monitoring');$('smot-'+cam.id).textContent='Map mode';});
     $('sh-'+cam.id).insertBefore(mediaEl,shimEl);
   }else if(cam.kind==='youtube'){
