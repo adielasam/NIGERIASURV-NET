@@ -3,1321 +3,638 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🇳🇬 Nigeria Live Surveillance Dashboard</title>
+<title>🇳🇬 NaijaSurv — Nigeria Live Surveillance Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Syne:wght@700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
 <style>
 :root {
-  --bg:      #030805;
-  --surface: #080f0a;
-  --card:    #0b1510;
-  --border:  rgba(56,255,120,0.10);
-  --green:   #008751;
-  --lime:    #2bff7a;
-  --white:   #f0fff4;
-  --white2:  #e0f0e6;
-  --silver:  #b0c4b8;
-  --muted:   #5a7a63;
-  --amber:   #ffcb47;
-  --red:     #ff4d6a;
-  --orange:  #ff8c42;
-  --glow:    rgba(43,255,122,0.18);
-  --r:       14px;
+  --bg:#020704;--surface:#060d08;--card:#09130b;
+  --border:rgba(0,180,80,0.12);--border2:rgba(0,180,80,0.22);
+  --green:#008751;--lime:#00e065;--lime2:#4fffaa;
+  --white:#edfff4;--silver:#9dbda8;--muted:#4d7558;
+  --amber:#ffc542;--red:#ff3d5a;--orange:#ff7b3a;--blue:#3d9bff;
+  --glow:0 0 30px rgba(0,135,81,0.25);--r:13px;--r2:8px;
 }
-
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-html, body {
-  height: 100%;
-  background: var(--bg);
-  color: var(--white);
-  font-family: 'Space Mono', monospace;
-  overflow: hidden;
-}
-
-/* === SCANLINES & GRID TEXTURE === */
-body::before {
-  content: '';
-  position: fixed; inset: 0;
-  background:
-    repeating-linear-gradient(0deg,
-      transparent 0px, transparent 3px,
-      rgba(0,135,81,0.018) 3px, rgba(0,135,81,0.018) 4px),
-    radial-gradient(ellipse 80% 60% at 20% 0%, rgba(0,135,81,0.12) 0%, transparent 55%),
-    radial-gradient(ellipse 60% 40% at 80% 100%, rgba(43,255,122,0.06) 0%, transparent 50%);
-  pointer-events: none;
-  z-index: 0;
-}
-
-/* === LAYOUT === */
-.app { position: relative; z-index: 1; display: grid; grid-template-rows: auto 1fr; height: 100vh; overflow: hidden; }
-
-/* === TOPBAR === */
-.topbar {
-  background: linear-gradient(180deg, rgba(3,8,5,0.98) 0%, rgba(3,8,5,0.88) 100%);
-  border-bottom: 1px solid var(--border);
-  padding: 0 20px;
-  position: sticky; top: 0; z-index: 100;
-}
-
-.topbar-inner {
-  display: flex; align-items: center; gap: 16px;
-  height: 64px; flex-wrap: wrap;
-}
-
-/* Nigerian flag stripe */
-.flag-stripe {
-  height: 3px;
-  background: linear-gradient(90deg, var(--green) 0 33.3%, var(--white) 33.3% 66.6%, var(--green) 66.6%);
-}
-
-.logo-area { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
-.logo-icon {
-  width: 40px; height: 40px; border-radius: 10px;
-  background: linear-gradient(135deg, var(--green), rgba(0,135,81,0.4));
-  display: flex; align-items: center; justify-content: center;
-  font-size: 20px; border: 1px solid rgba(43,255,122,0.3);
-  box-shadow: 0 0 20px rgba(0,135,81,0.4);
-}
-
-.logo-text h1 {
-  font-family: 'Syne', sans-serif;
-  font-size: 1.1rem; font-weight: 900;
-  letter-spacing: 0.04em; line-height: 1.1;
-  color: var(--white);
-}
-.logo-text .sub {
-  font-size: 0.62rem; color: var(--lime);
-  letter-spacing: 0.18em; text-transform: uppercase;
-}
-
-.status-pills {
-  display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
-}
-.pill {
-  display: inline-flex; align-items: center; gap: 5px;
-  background: rgba(11,21,16,0.9); border: 1px solid var(--border);
-  border-radius: 999px; padding: 4px 10px;
-  font-size: 0.65rem; color: var(--silver); letter-spacing: 0.06em;
-  white-space: nowrap;
-}
-.pill .dot {
-  width: 6px; height: 6px; border-radius: 50%;
-  background: var(--lime); animation: pulsedot 2s infinite;
-}
-.pill .dot.warn { background: var(--amber); }
-.pill .dot.bad  { background: var(--red); }
-@keyframes pulsedot {
-  0%,100% { opacity: 1; }
-  50%      { opacity: 0.35; }
-}
-
-.spacer { flex: 1; }
-
-.controls { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-.search-wrap {
-  position: relative;
-  min-width: 200px;
-}
-.search-wrap input {
-  background: rgba(11,21,16,0.95);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  color: var(--white);
-  padding: 7px 14px 7px 34px;
-  font-family: 'Space Mono', monospace;
-  font-size: 0.72rem;
-  outline: none; width: 100%;
-  transition: border-color 0.2s;
-}
-.search-wrap input:focus { border-color: rgba(43,255,122,0.4); }
-.search-wrap::before {
-  content: '⌕'; position: absolute; left: 12px; top: 50%;
-  transform: translateY(-50%); color: var(--lime); font-size: 0.9rem;
-}
-.btn {
-  font-family: 'Space Mono', monospace;
-  font-size: 0.65rem; font-weight: 700; letter-spacing: 0.06em;
-  background: rgba(11,21,16,0.9);
-  border: 1px solid var(--border);
-  border-radius: 8px; padding: 7px 12px;
-  color: var(--silver); cursor: pointer;
-  transition: all 0.15s; white-space: nowrap;
-}
-.btn:hover { border-color: rgba(43,255,122,0.35); color: var(--white); transform: translateY(-1px); }
-.btn.active { border-color: rgba(43,255,122,0.5); color: var(--lime); background: rgba(0,135,81,0.12); }
-.btn.danger { border-color: rgba(255,77,106,0.35); color: var(--red); }
-
-/* === MAIN LAYOUT === */
-.main {
-  display: grid;
-  grid-template-columns: minmax(0,1fr) 280px;
-  overflow: hidden;
-  height: 100%;
-}
-
-/* === MAP SIDE === */
-.map-side {
-  display: flex; flex-direction: column;
-  overflow: hidden;
-  border-right: 1px solid var(--border);
-}
-
-.section-head {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 14px; border-bottom: 1px solid var(--border);
-  background: rgba(8,15,10,0.8); flex-shrink: 0;
-}
-.section-title {
-  font-family: 'Syne', sans-serif; font-size: 0.8rem; font-weight: 800;
-  letter-spacing: 0.08em; text-transform: uppercase; color: var(--lime);
-}
-
-#map { flex: 1; min-height: 0; background: #030a05; }
-
-/* camera grid */
-.cam-scroll {
-  flex: 1.4; overflow-y: auto; overflow-x: hidden;
-  scrollbar-width: thin; scrollbar-color: var(--green) transparent;
-}
-.cam-scroll::-webkit-scrollbar { width: 4px; }
-.cam-scroll::-webkit-scrollbar-thumb { background: var(--green); border-radius: 999px; }
-
-.cam-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px,1fr));
-  gap: 12px; padding: 14px;
-}
-
-/* === CAMERA CARD === */
-.cam-card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--r);
-  overflow: hidden;
-  display: flex; flex-direction: column;
-  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
-  position: relative;
-}
-.cam-card:hover { transform: translateY(-2px); border-color: rgba(43,255,122,0.22); }
-.cam-card.focused { border-color: rgba(43,255,122,0.55); box-shadow: 0 0 0 1px rgba(43,255,122,0.18), 0 12px 40px rgba(0,0,0,0.5); }
-.cam-card.alert-traffic { border-color: rgba(255,203,71,0.5); box-shadow: 0 0 0 1px rgba(255,203,71,0.12); }
-.cam-card.alert-signal  { border-color: rgba(255,77,106,0.5); box-shadow: 0 0 0 1px rgba(255,77,106,0.12); }
-.cam-card.alert-security{ border-color: rgba(255,140,66,0.5); box-shadow: 0 0 0 1px rgba(255,140,66,0.12); }
-.cam-card.cam-hidden    { display: none; }
-
-.cam-head {
-  display: flex; align-items: flex-start; justify-content: space-between;
-  gap: 8px; padding: 10px 12px 8px;
-  border-bottom: 1px solid var(--border);
-  background: linear-gradient(180deg, rgba(12,22,15,0.95), rgba(8,15,10,0.7));
-}
-.cam-info {}
-.cam-label {
-  font-family: 'Syne', sans-serif; font-weight: 800;
-  font-size: 0.78rem; letter-spacing: 0.04em; line-height: 1.2;
-}
-.cam-meta {
-  display: flex; gap: 5px; flex-wrap: wrap; margin-top: 3px; align-items: center;
-}
-.tag {
-  display: inline-flex; align-items: center;
-  background: rgba(0,135,81,0.12); border: 1px solid rgba(0,135,81,0.18);
-  color: var(--lime); border-radius: 5px; padding: 1px 6px;
-  font-size: 0.6rem; letter-spacing: 0.06em; text-transform: uppercase;
-}
-.tag.red   { background: rgba(255,77,106,0.1);  border-color: rgba(255,77,106,0.2);  color: var(--red); }
-.tag.amber { background: rgba(255,203,71,0.1);  border-color: rgba(255,203,71,0.2);  color: var(--amber); }
-.tag.blue  { background: rgba(60,120,255,0.1);  border-color: rgba(60,120,255,0.2);  color: #7ab4ff; }
-.cam-src { font-size: 0.6rem; color: var(--muted); }
-
-.cam-btns { display: flex; gap: 4px; flex-shrink: 0; }
-.cam-btn {
-  font-family: 'Space Mono', monospace; font-size: 0.58rem; font-weight: 700;
-  background: rgba(11,21,16,0.9); border: 1px solid var(--border);
-  border-radius: 6px; padding: 4px 8px; color: var(--silver);
-  cursor: pointer; transition: all 0.15s;
-}
-.cam-btn:hover { border-color: rgba(43,255,122,0.3); color: var(--white); }
-.cam-btn.active { border-color: rgba(43,255,122,0.4); color: var(--lime); }
-
-/* === FEED === */
-.feed-shell {
-  position: relative; flex: 1;
-  min-height: 200px;
-  background: #020804;
-  overflow: hidden;
-}
-
-.feed-frame {
-  position: absolute; inset: 0;
-  width: 100%; height: 100%;
-  border: 0; object-fit: cover;
-  display: block;
-}
-
-/* Loading shimmer */
-.feed-loading {
-  position: absolute; inset: 0;
-  background: linear-gradient(90deg,
-    rgba(0,135,81,0.04) 0%,
-    rgba(43,255,122,0.08) 50%,
-    rgba(0,135,81,0.04) 100%);
-  background-size: 200% 100%;
-  animation: shimmer 1.8s infinite;
-}
-@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
-
-/* Error overlay */
-.feed-error {
-  position: absolute; inset: 0;
-  display: none;
-  flex-direction: column; align-items: center; justify-content: center;
-  gap: 8px; padding: 16px; text-align: center;
-  background: rgba(2,8,4,0.92);
-}
-.feed-error.show { display: flex; }
-.feed-error .err-icon { font-size: 2rem; }
-.feed-error .err-msg  { font-size: 0.68rem; color: var(--silver); line-height: 1.5; }
-.feed-error a { color: var(--lime); font-size: 0.65rem; text-decoration: underline; }
-
-/* Overlay HUD */
-.feed-hud {
-  position: absolute; inset: auto 8px 8px 8px;
-  display: flex; align-items: center; justify-content: space-between;
-  background: rgba(2,8,4,0.75); backdrop-filter: blur(8px);
-  border: 1px solid var(--border); border-radius: 8px; padding: 5px 10px;
-  font-size: 0.62rem; color: var(--silver);
-  pointer-events: none;
-}
-.hud-live { display: flex; align-items: center; gap: 5px; }
-.hud-pulse {
-  width: 7px; height: 7px; border-radius: 50%;
-  background: var(--lime); animation: pulsedot 1.6s infinite;
-}
-.hud-pulse.warn  { background: var(--amber); }
-.hud-pulse.dead  { background: var(--red); animation: none; }
-.hud-status { font-size: 0.62rem; color: var(--white); font-weight: 700; }
-
-/* === FOOTER STATS === */
-.cam-stats {
-  display: grid; grid-template-columns: repeat(3, 1fr);
-  border-top: 1px solid var(--border);
-  background: linear-gradient(180deg, rgba(8,15,10,0.8), rgba(3,8,5,0.95));
-}
-.stat {
-  padding: 8px 10px; border-right: 1px solid var(--border);
-  display: flex; flex-direction: column; gap: 2px;
-}
-.stat:last-child { border-right: none; }
-.stat-lbl { font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); }
-.stat-val { font-size: 0.72rem; font-weight: 700; color: var(--white); }
-.stat-note { font-size: 0.58rem; color: var(--muted); }
-
-.motion-bar {
-  height: 4px; border-radius: 999px;
-  background: rgba(255,255,255,0.06); overflow: hidden; margin-top: 4px;
-}
-.motion-bar span {
-  display: block; height: 100%; width: 0%; border-radius: 999px;
-  background: linear-gradient(90deg, var(--lime), var(--amber), var(--red));
-  transition: width 0.3s;
-}
-
-/* === SIDEBAR === */
-.sidebar {
-  display: flex; flex-direction: column; overflow: hidden;
-  background: var(--surface);
-}
-
-.audit-body { overflow-y: auto; flex: 1; scrollbar-width: thin; scrollbar-color: var(--green) transparent; }
-.audit-body::-webkit-scrollbar { width: 3px; }
-.audit-body::-webkit-scrollbar-thumb { background: var(--green); }
-
-.audit-group {
-  padding: 12px;
-  border-bottom: 1px solid var(--border);
-}
-.audit-group h3 {
-  font-family: 'Syne', sans-serif; font-size: 0.75rem; font-weight: 800;
-  color: var(--lime); margin-bottom: 8px; letter-spacing: 0.06em;
-}
-.audit-group p, .audit-group li {
-  font-size: 0.66rem; color: var(--silver); line-height: 1.6;
-}
-.audit-group ul { padding-left: 14px; display: flex; flex-direction: column; gap: 5px; }
-.audit-group a { color: var(--lime); }
-
-.alert-log {
-  padding: 10px; display: flex; flex-direction: column; gap: 6px;
-  max-height: 200px; overflow-y: auto;
-}
-.alert-item {
-  padding: 7px 9px; border-radius: 8px;
-  border: 1px solid rgba(255,203,71,0.2);
-  background: rgba(255,203,71,0.05);
-  font-size: 0.62rem; color: var(--silver);
-}
-.alert-item.red  { border-color: rgba(255,77,106,0.25); background: rgba(255,77,106,0.05); }
-.alert-item.orange { border-color: rgba(255,140,66,0.25); background: rgba(255,140,66,0.05); }
-.alert-item strong { color: var(--white); font-size: 0.65rem; }
-
-.no-alerts { font-size: 0.65rem; color: var(--muted); padding: 12px; text-align: center; }
-
-/* === TOAST STACK === */
-.toast-stack {
-  position: fixed; bottom: 18px; right: 18px;
-  display: flex; flex-direction: column-reverse; gap: 8px;
-  z-index: 200; width: min(320px, calc(100vw - 36px));
-  pointer-events: none;
-}
-.toast {
-  pointer-events: auto;
-  padding: 11px 13px; border-radius: 12px;
-  background: rgba(8,15,10,0.96); border: 1px solid rgba(255,203,71,0.3);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-  animation: toastIn 0.2s ease forwards;
-  font-size: 0.7rem;
-}
-.toast.red    { border-color: rgba(255,77,106,0.4); }
-.toast.orange { border-color: rgba(255,140,66,0.4); }
-.toast .t-title { font-weight: 700; color: var(--white); margin-bottom: 3px; }
-.toast .t-body  { color: var(--silver); line-height: 1.4; }
-@keyframes toastIn { from { opacity:0; transform: translateY(10px); } to { opacity:1; transform: translateY(0); } }
-
-/* === HIDDEN CANVAS === */
-#analysisCanvas { position: fixed; left: -9999px; top: -9999px; width: 1px; height: 1px; }
-
-/* === EMPTY STATE === */
-.empty-state {
-  display: none; padding: 40px; text-align: center;
-  border: 1px dashed var(--border); border-radius: var(--r);
-  margin: 14px; color: var(--muted); font-size: 0.75rem;
-}
-
-/* === LEAFLET OVERRIDES === */
-.leaflet-container { background: #030a05; }
-.leaflet-popup-content-wrapper, .leaflet-popup-tip {
-  background: rgba(8,15,10,0.97); color: var(--white); font-family: 'Space Mono', monospace;
-}
-.leaflet-popup-content { font-size: 0.72rem; line-height: 1.5; margin: 10px 12px; }
-.popup-focus { color: var(--lime); cursor: pointer; font-weight: 700; text-decoration: underline; }
-
-/* SCROLLBAR for main body */
-.cam-scroll::-webkit-scrollbar { width: 5px; }
-.cam-scroll::-webkit-scrollbar-track { background: transparent; }
-
-/* Responsive */
-@media (max-width: 1100px) {
-  .main { grid-template-columns: 1fr; }
-  .sidebar { display: none; }
-}
-@media (max-width: 780px) {
-  .map-side { grid-template-rows: 220px 1fr; }
-  .cam-grid { grid-template-columns: 1fr; }
-  .topbar-inner { height: auto; padding: 10px 0; }
-}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--white);font-family:'IBM Plex Mono','Courier New',monospace}
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background:repeating-linear-gradient(0deg,transparent 0px,transparent 2px,rgba(0,224,101,0.025) 2px,rgba(0,224,101,0.025) 3px),radial-gradient(ellipse 90% 70% at 10% 0%,rgba(0,135,81,0.12),transparent 50%),radial-gradient(ellipse 60% 40% at 85% 100%,rgba(0,224,101,0.04),transparent 50%)}
+.app{position:relative;z-index:1;height:100vh;display:grid;grid-template-rows:auto 1fr}
+.flag-bar{height:4px;background:linear-gradient(90deg,var(--green) 0 33.33%,var(--white) 33.33% 66.66%,var(--green) 66.66%)}
+.topbar{background:linear-gradient(180deg,rgba(2,7,4,.99),rgba(4,10,6,.92));border-bottom:1px solid var(--border);backdrop-filter:blur(12px)}
+.topbar-row{display:flex;align-items:center;gap:12px;padding:9px 16px;flex-wrap:wrap}
+.logo{display:flex;align-items:center;gap:9px;flex-shrink:0}
+.logo-icon{width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,rgba(0,135,81,.9),rgba(0,70,40,.6));border:1px solid rgba(0,224,101,.3);display:flex;align-items:center;justify-content:center;font-size:17px;box-shadow:var(--glow)}
+.logo-text .t1{font-family:'Syne',sans-serif;font-weight:900;font-size:1rem;letter-spacing:.06em;color:var(--white);line-height:1.1}
+.logo-text .t2{font-size:.58rem;color:var(--lime);letter-spacing:.2em;text-transform:uppercase}
+.proxy-banner{display:flex;align-items:center;gap:8px;background:rgba(255,123,58,.07);border:1px solid rgba(255,123,58,.25);border-radius:var(--r2);padding:5px 10px;font-size:.62rem;color:var(--orange);flex:1;min-width:180px;flex-wrap:wrap}
+.proxy-banner.ok{background:rgba(0,224,101,.06);border-color:rgba(0,224,101,.2);color:var(--lime2)}
+#proxyInput{background:rgba(0,0,0,.35);border:1px solid var(--border2);border-radius:var(--r2);padding:4px 7px;font-family:'IBM Plex Mono',monospace;font-size:.62rem;color:var(--white);outline:none;width:260px}
+#proxyInput:focus{border-color:rgba(0,224,101,.45)}
+#proxyInput::placeholder{color:var(--muted)}
+.btn-set{font-family:inherit;font-size:.59rem;font-weight:700;background:rgba(0,135,81,.18);border:1px solid rgba(0,224,101,.28);border-radius:var(--r2);padding:3px 9px;color:var(--lime);cursor:pointer}
+.btn-set:hover{background:rgba(0,135,81,.32)}
+.pills{display:flex;gap:5px;flex-wrap:wrap;align-items:center;flex-shrink:0}
+.pill{display:inline-flex;align-items:center;gap:4px;background:rgba(9,19,11,.85);border:1px solid var(--border);border-radius:999px;padding:3px 8px;font-size:.59rem;color:var(--silver);white-space:nowrap}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--lime);animation:blink 2s infinite}
+.dot.w{background:var(--amber)}.dot.r{background:var(--red);animation:none}.dot.b{background:var(--blue)}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.spacer{flex:1}
+.controls{display:flex;gap:5px;align-items:center}
+.search-wrap{position:relative}
+.search-wrap input{background:rgba(9,19,11,.9);border:1px solid var(--border);border-radius:999px;color:var(--white);padding:6px 12px 6px 28px;font-family:'IBM Plex Mono',monospace;font-size:.65rem;outline:none;width:190px}
+.search-wrap input:focus{border-color:var(--border2)}
+.search-wrap::before{content:'⌕';position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--lime);font-size:.82rem}
+.btn{font-family:'IBM Plex Mono',monospace;font-size:.61rem;font-weight:600;background:rgba(9,19,11,.9);border:1px solid var(--border);border-radius:var(--r2);padding:6px 10px;color:var(--silver);cursor:pointer;transition:all .14s;white-space:nowrap;letter-spacing:.04em}
+.btn:hover{border-color:var(--border2);color:var(--white);transform:translateY(-1px)}
+.btn.on{border-color:rgba(0,224,101,.4);color:var(--lime);background:rgba(0,135,81,.1)}
+.body{display:grid;grid-template-columns:minmax(0,1fr) 268px;overflow:hidden;min-height:0}
+.left{display:flex;flex-direction:column;min-height:0;border-right:1px solid var(--border)}
+.map-wrap{height:228px;flex-shrink:0;position:relative;border-bottom:1px solid var(--border)}
+.map-head{position:absolute;top:0;left:0;right:0;z-index:10;display:flex;align-items:center;justify-content:space-between;padding:6px 11px;background:linear-gradient(180deg,rgba(2,7,4,.92),rgba(2,7,4,.05))}
+.map-label{font-family:'Syne',sans-serif;font-size:.7rem;font-weight:800;color:var(--lime);letter-spacing:.08em;text-transform:uppercase}
+#map{width:100%;height:100%;background:#020904}
+.scroll-area{flex:1;overflow-y:auto;overflow-x:hidden;min-height:0;scroll-behavior:smooth}
+.scroll-area::-webkit-scrollbar{width:4px}
+.scroll-area::-webkit-scrollbar-thumb{background:rgba(0,135,81,.28);border-radius:999px}
+.cam-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:10px;padding:11px}
+.cam-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;display:flex;flex-direction:column;transition:border-color .2s,transform .18s,box-shadow .2s;position:relative}
+.cam-card:hover{transform:translateY(-2px);border-color:rgba(0,224,101,.18)}
+.cam-card.a-traffic{border-color:rgba(255,197,66,.55)!important;box-shadow:0 0 0 1px rgba(255,197,66,.1)}
+.cam-card.a-signal{border-color:rgba(255,61,90,.55)!important;box-shadow:0 0 0 1px rgba(255,61,90,.1)}
+.cam-card.a-security{border-color:rgba(255,123,58,.55)!important;box-shadow:0 0 0 1px rgba(255,123,58,.1)}
+.cam-card.focused{border-color:rgba(0,224,101,.65)!important;box-shadow:0 0 0 1px rgba(0,224,101,.18),0 8px 32px rgba(0,0,0,.5)}
+.cam-card.hidden{display:none}
+.cam-head{display:flex;align-items:flex-start;justify-content:space-between;gap:5px;padding:8px 10px 6px;background:linear-gradient(180deg,rgba(11,24,14,.95),rgba(7,15,9,.6));border-bottom:1px solid var(--border)}
+.cam-title{font-family:'Syne',sans-serif;font-weight:800;font-size:.74rem;letter-spacing:.03em;color:var(--white);line-height:1.2}
+.cam-meta{display:flex;gap:3px;flex-wrap:wrap;margin-top:3px;align-items:center}
+.tag{display:inline-flex;align-items:center;padding:1px 5px;border-radius:4px;font-size:.56rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;border:1px solid}
+.tag-g{background:rgba(0,135,81,.1);border-color:rgba(0,135,81,.2);color:var(--lime)}
+.tag-b{background:rgba(61,155,255,.09);border-color:rgba(61,155,255,.2);color:var(--blue)}
+.tag-a{background:rgba(255,197,66,.09);border-color:rgba(255,197,66,.2);color:var(--amber)}
+.tag-o{background:rgba(255,123,58,.09);border-color:rgba(255,123,58,.2);color:var(--orange)}
+.cam-src{font-size:.56rem;color:var(--muted)}
+.cam-btns{display:flex;gap:3px;flex-shrink:0}
+.ic-btn{font-family:'IBM Plex Mono',monospace;font-size:.59rem;font-weight:600;background:rgba(9,19,11,.85);border:1px solid var(--border);border-radius:5px;padding:3px 6px;color:var(--silver);cursor:pointer;transition:all .12s}
+.ic-btn:hover{border-color:var(--border2);color:var(--white)}
+.ic-btn.on{border-color:rgba(0,224,101,.35);color:var(--lime)}
+.feed-shell{position:relative;flex:1;min-height:188px;background:#020904;overflow:hidden}
+.feed-shimmer{position:absolute;inset:0;z-index:2;background:linear-gradient(90deg,rgba(0,80,40,.04) 0%,rgba(0,224,101,.06) 50%,rgba(0,80,40,.04) 100%);background-size:200% 100%;animation:shimmer 1.6s ease-in-out infinite}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.feed-err{position:absolute;inset:0;z-index:3;display:none;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:14px;text-align:center;background:rgba(2,7,4,.94)}
+.feed-err.show{display:flex}
+.err-icon{font-size:1.7rem}
+.err-text{font-size:.61rem;color:var(--silver);line-height:1.55}
+.err-text a{color:var(--lime2)}
+.err-proxy{margin-top:5px;font-size:.57rem;color:var(--orange);background:rgba(255,123,58,.07);border:1px solid rgba(255,123,58,.18);border-radius:5px;padding:4px 8px}
+.feed-media{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border:0;display:block;background:#020904}
+.feed-hud{position:absolute;inset:auto 7px 7px 7px;z-index:4;display:flex;align-items:center;justify-content:space-between;background:rgba(1,5,2,.72);backdrop-filter:blur(8px);border:1px solid var(--border);border-radius:7px;padding:4px 8px;font-size:.58rem;color:var(--silver);pointer-events:none}
+.hud-l{display:flex;align-items:center;gap:4px}
+.hud-dot{width:7px;height:7px;border-radius:50%;background:var(--lime);animation:blink 1.8s infinite}
+.hud-dot.w{background:var(--amber)}.hud-dot.d{background:var(--red);animation:none}
+.hud-status{font-size:.61rem;color:var(--white);font-weight:700}
+.proxy-badge{position:absolute;top:7px;right:7px;z-index:4;font-size:.54rem;font-weight:700;letter-spacing:.05em;padding:2px 5px;border-radius:4px;border:1px solid rgba(255,123,58,.3);background:rgba(255,123,58,.09);color:var(--orange)}
+.proxy-badge.ok{border-color:rgba(0,224,101,.28);background:rgba(0,224,101,.07);color:var(--lime)}
+.cam-stats{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--border);background:linear-gradient(180deg,rgba(7,15,9,.85),rgba(2,7,4,.97))}
+.stat{padding:6px 8px;border-right:1px solid var(--border);display:flex;flex-direction:column;gap:2px}
+.stat:last-child{border-right:none}
+.s-lbl{font-size:.54rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
+.s-val{font-size:.67rem;font-weight:700;color:var(--white)}
+.s-note{font-size:.54rem;color:var(--muted);line-height:1.3;margin-top:1px}
+.m-bar{height:3px;border-radius:999px;background:rgba(255,255,255,.05);overflow:hidden;margin-top:3px}
+.m-bar span{display:block;height:100%;width:0;border-radius:999px;background:linear-gradient(90deg,var(--lime),var(--amber),var(--red));transition:width .35s}
+.empty{display:none;text-align:center;padding:36px 18px;color:var(--muted);font-size:.7rem;border:1px dashed var(--border);border-radius:var(--r);margin:11px}
+.sidebar{display:flex;flex-direction:column;overflow:hidden;background:var(--surface);min-height:0}
+.s-head{padding:7px 11px;border-bottom:1px solid var(--border);background:linear-gradient(180deg,rgba(6,13,8,.97),rgba(4,9,5,.7));font-family:'Syne',sans-serif;font-size:.7rem;font-weight:800;color:var(--lime2);letter-spacing:.09em;text-transform:uppercase;flex-shrink:0}
+.s-body{overflow-y:auto;flex:1;min-height:0;scrollbar-width:thin;scrollbar-color:rgba(0,135,81,.25) transparent}
+.s-body::-webkit-scrollbar{width:3px}
+.s-body::-webkit-scrollbar-thumb{background:rgba(0,135,81,.22);border-radius:999px}
+.alert-log-wrap{padding:7px;display:flex;flex-direction:column;gap:5px}
+.al-none{font-size:.61rem;color:var(--muted);text-align:center;padding:10px}
+.al-item{padding:6px 8px;border-radius:6px;border:1px solid rgba(255,197,66,.2);background:rgba(255,197,66,.04);font-size:.59rem;color:var(--silver);line-height:1.45}
+.al-item.r{border-color:rgba(255,61,90,.2);background:rgba(255,61,90,.04)}
+.al-item.o{border-color:rgba(255,123,58,.2);background:rgba(255,123,58,.04)}
+.al-item strong{color:var(--white);display:block;font-size:.61rem;margin-bottom:1px}
+.s-section{border-bottom:1px solid var(--border)}
+.s-section h3{font-family:'Syne',sans-serif;font-size:.67rem;font-weight:800;color:var(--lime);padding:7px 11px;letter-spacing:.07em;cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none}
+.s-section h3::after{content:'▾';font-size:.68rem;color:var(--muted)}
+.s-section h3.closed::after{content:'▸'}
+.s-content{padding:0 11px 9px}
+.s-content p,.s-content li{font-size:.62rem;color:var(--silver);line-height:1.6}
+.s-content ul{padding-left:13px;display:flex;flex-direction:column;gap:4px}
+.s-content a{color:var(--lime2)}
+.s-content code{background:rgba(0,0,0,.35);border-radius:3px;padding:0 3px;font-size:.57rem;color:var(--white)}
+.s-content pre{background:rgba(0,0,0,.4);border:1px solid var(--border);border-radius:var(--r2);padding:8px 9px;margin-top:5px;font-size:.56rem;color:#a8ffcc;overflow-x:auto;white-space:pre;line-height:1.55}
+.toast-stack{position:fixed;bottom:12px;right:12px;display:flex;flex-direction:column-reverse;gap:6px;z-index:500;width:min(305px,calc(100vw - 24px));pointer-events:none}
+.toast{pointer-events:auto;padding:9px 12px;border-radius:9px;background:rgba(6,13,8,.97);border:1px solid rgba(255,197,66,.3);box-shadow:0 8px 28px rgba(0,0,0,.6);animation:toastIn .18s ease forwards;font-size:.64rem;transition:opacity .4s,transform .4s}
+.toast.r{border-color:rgba(255,61,90,.35)}.toast.o{border-color:rgba(255,123,58,.35)}
+.toast .tt{font-weight:700;color:var(--white);margin-bottom:2px;font-size:.66rem}
+.toast .tb{color:var(--silver);line-height:1.4}
+@keyframes toastIn{from{opacity:0;transform:translateX(18px)}to{opacity:1;transform:translateX(0)}}
+#mc{position:fixed;left:-9999px;top:-9999px}
+.leaflet-container{background:#020904}
+.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:rgba(6,13,8,.97)!important;color:var(--white);font-family:'IBM Plex Mono',monospace}
+.leaflet-popup-content{font-size:.66rem;line-height:1.5;margin:8px 11px}
+.lp-link{color:var(--lime2);cursor:pointer;text-decoration:underline;font-weight:700}
+@media(max-width:1040px){.body{grid-template-columns:1fr}.sidebar{display:none}}
+@media(max-width:680px){.cam-grid{grid-template-columns:1fr}.topbar-row{padding:7px 11px}#proxyInput{width:150px}}
 </style>
 </head>
 <body>
 <div class="app">
-
-  <!-- TOPBAR -->
-  <header class="topbar">
-    <div class="flag-stripe"></div>
-    <div class="topbar-inner">
-      <div class="logo-area">
-        <div class="logo-icon">📡</div>
-        <div class="logo-text">
-          <h1>NIGERIA SURV-NET</h1>
-          <div class="sub">Traffic · Security · Live Feeds</div>
-        </div>
-      </div>
-      <div class="status-pills">
-        <span class="pill"><span class="dot" id="dotLive"></span><span id="pillFeeds">-- feeds</span></span>
-        <span class="pill"><span class="dot" id="dotAlerts"></span><span id="pillAlerts">0 alerts</span></span>
-        <span class="pill"><span class="dot"></span><span id="pillClock">--:-- WAT</span></span>
-        <span class="pill"><span class="dot"></span><span id="pillVisible">-- visible</span></span>
-      </div>
-      <div class="spacer"></div>
-      <div class="controls">
-        <div class="search-wrap">
-          <input id="searchInput" type="search" placeholder="Lagos, Abuja, port, traffic…">
-        </div>
-        <button class="btn" id="btnPauseAll">⏸ Pause All</button>
-        <button class="btn" id="btnRefreshAll">↺ Refresh</button>
-        <button class="btn active" id="btnSound">🔊 Sound</button>
-        <button class="btn" id="btnFS">⛶ Fullscreen</button>
+<header class="topbar">
+  <div class="flag-bar"></div>
+  <div class="topbar-row">
+    <div class="logo">
+      <div class="logo-icon">📡</div>
+      <div class="logo-text">
+        <div class="t1">NAIJASURV</div>
+        <div class="t2">Nigeria Live Surveillance · v2.0</div>
       </div>
     </div>
-  </header>
-
-  <!-- MAIN -->
-  <div class="main">
-
-    <!-- LEFT: Map + Cam Grid -->
-    <div class="map-side">
-      <!-- Map -->
-      <div style="height:240px; position:relative; flex-shrink:0;">
-        <div class="section-head">
-          <span class="section-title">📍 Nigeria Road Map — Camera Pins</span>
-          <div style="display:flex;gap:6px">
-            <button class="btn" id="btnFitMap">Fit</button>
-            <a class="btn" href="https://www.google.com/maps/@9.082,8.6753,6z/data=!5m1!1e1" target="_blank" rel="noopener">Google Maps ↗</a>
-          </div>
-        </div>
-        <div id="map" style="height:calc(100% - 41px);"></div>
+    <div class="proxy-banner" id="proxyBanner">
+      <span>⚡ CORS Proxy:</span>
+      <input id="proxyInput" type="url" placeholder="https://your-worker.workers.dev/?url=" spellcheck="false">
+      <button class="btn-set" id="btnSetProxy">Apply</button>
+      <span id="proxyStatus">No proxy set — Pictimo/APM feeds need proxy to display</span>
+    </div>
+    <div class="pills">
+      <span class="pill"><span class="dot"></span><span id="pFeeds">-- feeds</span></span>
+      <span class="pill"><span class="dot b"></span><span id="pLive">-- img cams</span></span>
+      <span class="pill"><span class="dot w" id="dAlerts"></span><span id="pAlerts">0 alerts</span></span>
+      <span class="pill"><span class="dot"></span><span id="pClock">--:-- WAT</span></span>
+    </div>
+    <div class="spacer"></div>
+    <div class="controls">
+      <div class="search-wrap">
+        <input id="searchInput" type="search" placeholder="Lagos, Abuja, port, Warri…">
       </div>
-      <!-- Cam grid -->
-      <div class="cam-scroll">
-        <div id="camGrid" class="cam-grid"></div>
-        <div id="emptyState" class="empty-state">No cameras match that search. Try: Lagos, Abuja, Apapa, port, traffic, Warri, Kano</div>
+      <button class="btn on" id="btnPause">⏸ Pause All</button>
+      <button class="btn" id="btnRefresh">↺ Refresh</button>
+      <button class="btn on" id="btnSound">🔊 Sound</button>
+      <button class="btn" id="btnFS">⛶ FS</button>
+    </div>
+  </div>
+</header>
+<div class="body">
+  <div class="left">
+    <div class="map-wrap">
+      <div class="map-head">
+        <span class="map-label">📍 Nigeria — Camera Pin Map</span>
+        <div style="display:flex;gap:4px">
+          <button class="btn" id="btnFit">Fit All</button>
+          <a class="btn" href="https://www.google.com/maps/@9.082,8.6753,6z/data=!5m1!1e1" target="_blank" rel="noopener">Google Maps ↗</a>
+        </div>
+      </div>
+      <div id="map"></div>
+    </div>
+    <div class="scroll-area">
+      <div id="camGrid" class="cam-grid"></div>
+      <div id="empty" class="empty">No cameras match that search. Try: Lagos, Abuja, port, Apapa, Warri, Kano, traffic…</div>
+    </div>
+  </div>
+  <div class="sidebar">
+    <div class="s-head">⚡ Alert Log</div>
+    <div id="alertLog" style="max-height:190px;flex:none;overflow-y:auto;scrollbar-width:thin">
+      <div class="alert-log-wrap"><div class="al-none">Monitoring… no alerts yet.</div></div>
+    </div>
+    <div class="s-head">🛠 Setup &amp; Sources</div>
+    <div class="s-body">
+      <div class="s-section">
+        <h3 id="sh1">Step 1 — Deploy Free CORS Proxy</h3>
+        <div id="sc1" class="s-content">
+          <p style="margin-bottom:5px">Go to <a href="https://dash.cloudflare.com" target="_blank" rel="noopener">dash.cloudflare.com</a> → Workers → Create → paste this code → Deploy (free, unlimited):</p>
+          <pre>addEventListener('fetch', ev => {
+  ev.respondWith(handle(ev.request));
+});
+async function handle(req) {
+  const u = new URL(req.url);
+  const target = u.searchParams.get('url');
+  if (!target) return new Response('Missing ?url=',{status:400});
+  // Allowlist for security
+  const ok = ['images.pictimo.com',
+               'cms-cd.apmterminals.com',
+               'worldcam.eu'];
+  const dest = new URL(target);
+  if (!ok.some(d => dest.hostname.endsWith(d)))
+    return new Response('Blocked',{status:403});
+  const r = await fetch(target, {
+    headers:{
+      'User-Agent':'Mozilla/5.0 Chrome/124',
+      'Referer':'https://www.pictimo.com/',
+      'Origin':'https://www.pictimo.com'
+    }
+  });
+  const h = new Headers(r.headers);
+  h.set('Access-Control-Allow-Origin','*');
+  h.set('Cache-Control','no-cache, no-store');
+  return new Response(r.body,{status:r.status,headers:h});
+}</pre>
+          <p style="margin-top:7px">Copy your Worker URL (e.g. <code>https://ng-cams.xyz.workers.dev/?url=</code>) into the box above and click Apply. Your proxy URL is saved in localStorage.</p>
+        </div>
+      </div>
+      <div class="s-section">
+        <h3 id="sh2" class="closed">Source Status (Verified Apr 2026)</h3>
+        <div id="sc2" class="s-content" style="display:none">
+          <ul>
+            <li><strong>APM Terminals Apapa</strong> ✅ — Official gate images. Referer-gated → needs proxy.</li>
+            <li><strong>Pictimo Nigeria cams</strong> ✅ — Real IP cameras (Lagos ×5, Abuja ×1, PH ×1, Orerokpe ×1). CORS-blocked → needs proxy.</li>
+            <li><strong>WorldCam.eu Apapa</strong> ⚠️ — Iframe embed of Apapa cam page (may show preview).</li>
+            <li><strong>Google Maps Traffic</strong> ✅ — Real-time traffic overlay, always works. No proxy needed.</li>
+            <li><strong>YouTube Live TV</strong> ✅ — Always works in iframe. Channels TV, NTA, Arise.</li>
+            <li><strong>NaijaCams.com</strong> ❌ — DNS dead as of April 2026.</li>
+            <li><strong>TrafficEye.com.ng</strong> ❌ — Landing page only, no embeddable stream found.</li>
+            <li><strong>Insecam.org Nigeria</strong> ❌ — 403 / anti-embed protection active.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="s-section">
+        <h3 id="sh3" class="closed">Motion Analysis Engine</h3>
+        <div id="sc3" class="s-content" style="display:none">
+          <p>For <code>img-proxy</code> feeds with CORS access, every 5 seconds:</p>
+          <ul>
+            <li>Frame drawn to 120×68 hidden canvas</li>
+            <li>Per-pixel grayscale delta computed vs previous frame</li>
+            <li>&gt;10% pixels changed → Heavy traffic alert</li>
+            <li>Brightness &lt;18 OR 30s no motion → Signal lost alert</li>
+            <li>Night (20:00–05:00 WAT) + spike &gt;18% → Security alert</li>
+            <li>Toast notification + audio tone fired (needs user interaction first)</li>
+          </ul>
+          <p style="margin-top:5px">Google Maps and YouTube tiles show HUD status only (no pixel analysis inside iframes).</p>
+        </div>
+      </div>
+      <div class="s-section">
+        <h3 id="sh4" class="closed">Full Camera Inventory (29 feeds)</h3>
+        <div id="sc4" class="s-content" style="display:none">
+          <ul>
+            <li>2× APM Terminals Apapa (inbound + outbound) — img</li>
+            <li>7× Pictimo Lagos IP cameras — img (needs proxy)</li>
+            <li>1× Pictimo Abuja camera — img (needs proxy)</li>
+            <li>1× Pictimo Port Harcourt — img (needs proxy)</li>
+            <li>1× Pictimo Orerokpe — img (needs proxy)</li>
+            <li>2× WorldCam Apapa iframes</li>
+            <li>10× Lagos roads — Google Maps traffic</li>
+            <li>3× Abuja — Google Maps traffic</li>
+            <li>2× Port Harcourt — Google Maps traffic</li>
+            <li>Kano, Warri, Benin City, Ibadan, Enugu, Onitsha — Google Maps</li>
+            <li>3× YouTube Live: Channels TV, NTA, Arise News</li>
+          </ul>
+        </div>
       </div>
     </div>
-
-    <!-- RIGHT: Sidebar -->
-    <div class="sidebar">
-      <!-- Alerts log -->
-      <div class="section-head"><span class="section-title">⚡ Alert Log</span></div>
-      <div id="alertLog" class="alert-log">
-        <div class="no-alerts">No alerts fired yet. Monitoring active feeds…</div>
-      </div>
-
-      <!-- Audit -->
-      <div class="section-head" style="margin-top:auto"><span class="section-title">🔍 Source Audit</span></div>
-      <div class="audit-body">
-        <div class="audit-group">
-          <h3>✅ Live Feeds Active</h3>
-          <ul>
-            <li><strong>APM Terminals Apapa</strong> — Official gate camera images at cms-cd.apmterminals.com (refreshed ~60s). <em>These are the only real, verified Nigeria-specific live CCTV images.</em></li>
-            <li><strong>Google Maps Traffic tiles</strong> — Embedded maps zoomed to major roads with real-time traffic layer. Updated by Google continuously.</li>
-            <li><strong>NTA (Nigerian Television Authority)</strong> — YouTube live embed where available.</li>
-            <li><strong>Channels TV</strong> — YouTube live embed for Nigeria news context.</li>
-          </ul>
-        </div>
-        <div class="audit-group">
-          <h3>⚠️ Why Some Feeds Don't Load</h3>
-          <ul>
-            <li><strong>Pictimo / insecam</strong> — Returns CORS-blocked images. Visible in browser but canvas motion analysis is blocked. Old thumbnails, not live.</li>
-            <li><strong>TrafficEye.com.ng</strong> — Verified as a landing page only; no embeddable stream endpoints found.</li>
-            <li><strong>naijacams.com</strong> — DNS resolution failed on verification (April 2026).</li>
-            <li><strong>WeatherBug Abuja/Lagos</strong> — Reports "no traffic cams in region."</li>
-            <li><strong>LASTMA cameras</strong> — Not publicly embeddable; used internally only.</li>
-          </ul>
-        </div>
-        <div class="audit-group">
-          <h3>🚀 To Get More Real Cameras</h3>
-          <p style="margin-bottom:6px">Set up a CORS proxy (e.g., Cloudflare Worker) or contact these sources directly:</p>
-          <ul>
-            <li><a href="https://trafficeye.com.ng" target="_blank" rel="noopener">trafficeye.com.ng</a> — Nigerian traffic portal</li>
-            <li><a href="https://www.apmterminals.com/en/apapa/practical-information/gate-cameras" target="_blank" rel="noopener">APM Terminals Apapa gate cams</a></li>
-            <li><a href="https://worldcam.eu/webcams/africa/nigeria" target="_blank" rel="noopener">WorldCam Nigeria</a></li>
-            <li><a href="https://rtsmg.com" target="_blank" rel="noopener">RTSMG (Road Transport Safety)</a></li>
-          </ul>
-        </div>
-        <div class="audit-group">
-          <h3>📡 Motion Analysis</h3>
-          <p>For <code>&lt;img&gt;</code> feeds with CORS headers, pixel-diff runs every 5s via hidden canvas. Threshold: &gt;3% changed pixels = traffic motion. Night (20:00–05:00 WAT) + spike = security alert. No motion 30s+ = signal lost.</p>
-        </div>
-      </div>
-    </div>
-
   </div>
 </div>
-
-<!-- Toast stack -->
-<div id="toastStack" class="toast-stack"></div>
-<canvas id="analysisCanvas" width="120" height="68"></canvas>
-
+</div>
+<div id="toasts" class="toast-stack"></div>
+<canvas id="mc" width="120" height="68"></canvas>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script>
-// =====================================================================
-//  CAMERA DATA — all real, verified or best-available public sources
-// =====================================================================
+'use strict';
+let PROXY_URL = localStorage.getItem('ng_proxy') || '';
+
 const CAMS = [
-  // --- APM TERMINALS (REAL LIVE IMAGES from official endpoint) ---
-  {
-    id: 'apapa-in', label: 'Lagos · Apapa Port — Inbound Gate',
-    city: 'Lagos', area: 'Apapa', kind: 'img-live',
-    imgUrl: 'https://cms-cd.apmterminals.com/apm/api/v1/gatecameras/gate-camera?id=13b8ab33-4dfd-46ad-8085-a113b86c35e3',
-    sourceUrl: 'https://www.apmterminals.com/en/apapa/practical-information/gate-cameras',
-    sourceName: 'APM Terminals Official',
-    tags: ['lagos','apapa','port','inbound','container','terminal'],
-    lat: 6.4314, lng: 3.3428, refreshMs: 60000,
-    note: 'Official APM Terminals gate camera. Refreshes ~every 60s. Shows truck queues at inbound gate.',
-    quality: 'live'
-  },
-  {
-    id: 'apapa-out', label: 'Lagos · Apapa Port — Outbound Gate',
-    city: 'Lagos', area: 'Apapa', kind: 'img-live',
-    imgUrl: 'https://cms-cd.apmterminals.com/apm/api/v1/gatecameras/gate-camera?id=10f6ae28-8c9e-46d3-8d13-18aa8396652f',
-    sourceUrl: 'https://www.apmterminals.com/en/apapa/practical-information/gate-cameras',
-    sourceName: 'APM Terminals Official',
-    tags: ['lagos','apapa','port','outbound','container','terminal'],
-    lat: 6.4331, lng: 3.3431, refreshMs: 60000,
-    note: 'Official APM Terminals gate camera. Refreshes ~every 60s. Shows outbound truck flow.',
-    quality: 'live'
-  },
-
-  // --- GOOGLE MAPS TRAFFIC EMBEDS (real-time traffic layer per road) ---
-  {
-    id: 'gmap-3mb', label: 'Lagos · Third Mainland Bridge',
-    city: 'Lagos', area: 'Third Mainland', kind: 'gmap',
-    mapCenter: '6.5145,3.3944', mapZoom: 15,
-    sourceUrl: 'https://www.google.com/maps/@6.5145,3.3944,15z/data=!5m1!1e1',
-    sourceName: 'Google Maps Traffic',
-    tags: ['lagos','third mainland','bridge','traffic','road'],
-    lat: 6.5145, lng: 3.3944,
-    note: 'Real-time Google Maps traffic layer for Third Mainland Bridge.',
-    quality: 'traffic'
-  },
-  {
-    id: 'gmap-lekki', label: 'Lagos · Lekki-Ikoyi Link Bridge',
-    city: 'Lagos', area: 'Lekki', kind: 'gmap',
-    mapCenter: '6.4481,3.4219', mapZoom: 15,
-    sourceUrl: 'https://www.google.com/maps/@6.4481,3.4219,15z/data=!5m1!1e1',
-    sourceName: 'Google Maps Traffic',
-    tags: ['lagos','lekki','ikoyi','bridge','traffic'],
-    lat: 6.4481, lng: 3.4219,
-    note: 'Live traffic overlay on Lekki-Ikoyi Bridge corridor.',
-    quality: 'traffic'
-  },
-  {
-    id: 'gmap-carter', label: 'Lagos · Carter Bridge / Marina',
-    city: 'Lagos', area: 'Lagos Island', kind: 'gmap',
-    mapCenter: '6.4542,3.3947', mapZoom: 15,
-    sourceUrl: 'https://www.google.com/maps/@6.4542,3.3947,15z/data=!5m1!1e1',
-    sourceName: 'Google Maps Traffic',
-    tags: ['lagos','marina','carter','bridge','island'],
-    lat: 6.4542, lng: 3.3947,
-    note: 'Carter Bridge and Marina Road real-time traffic.',
-    quality: 'traffic'
-  },
-  {
-    id: 'gmap-oshodi', label: 'Lagos · Oshodi-Apapa Expressway',
-    city: 'Lagos', area: 'Oshodi', kind: 'gmap',
-    mapCenter: '6.5561,3.3239', mapZoom: 14,
-    sourceUrl: 'https://www.google.com/maps/@6.5561,3.3239,14z/data=!5m1!1e1',
-    sourceName: 'Google Maps Traffic',
-    tags: ['lagos','oshodi','apapa','expressway','traffic'],
-    lat: 6.5561, lng: 3.3239,
-    note: 'Oshodi-Apapa Expressway — notoriously heavy traffic zone.',
-    quality: 'traffic'
-  },
-  {
-    id: 'gmap-allen', label: 'Lagos · Allen Avenue, Ikeja',
-    city: 'Lagos', area: 'Ikeja', kind: 'gmap',
-    mapCenter: '6.6018,3.3515', mapZoom: 15,
-    sourceUrl: 'https://www.google.com/maps/@6.6018,3.3515,15z/data=!5m1!1e1',
-    sourceName: 'Google Maps Traffic',
-    tags: ['lagos','allen','ikeja','avenue','traffic'],
-    lat: 6.6018, lng: 3.3515,
-    note: 'Allen Avenue & Ikeja CBD live traffic conditions.',
-    quality: 'traffic'
-  },
-  {
-    id: 'gmap-ikorodu', label: 'Lagos · Ikorodu Road',
-    city: 'Lagos', area: 'Ikorodu', kind: 'gmap',
-    mapCenter: '6.5786,3.3858', mapZoom: 14,
-    sourceUrl: 'https://www.google.com/maps/@6.5786,3.3858,14z/data=!5m1!1e1',
-    sourceName: 'Google Maps Traffic',
-    tags: ['lagos','ikorodu','road','bus','traffic'],
-    lat: 6.5786, lng: 3.3858,
-    note: 'Ikorodu Road — major BRT corridor with live traffic.',
-    quality: 'traffic'
-  },
-  {
-    id: 'gmap-alapere', label: 'Lagos · Alapere / Ogudu Road',
-    city: 'Lagos', area: 'Ogudu', kind: 'gmap',
-    mapCenter: '6.5889,3.4058', mapZoom: 15,
-    sourceUrl: 'https://www.google.com/maps/@6.5889,3.4058,15z/data=!5m1!1e1',
-    sourceName: 'Google Maps Traffic',
-    tags: ['lagos','alapere','ogudu','traffic','road'],
-    lat: 6.5889, lng: 3.4058,
-    note: 'Alapere & Ogudu road live traffic.',
-    quality: 'traffic'
-  },
-  {
-    id: 'gmap-vi', label: 'Lagos · Victoria Island',
-    city: 'Lagos', area: 'Victoria Island', kind: 'gmap',
-    mapCenter: '6.4281,3.4219', mapZoom: 15,
-    sourceUrl: 'https://www.google.com/maps/@6.4281,3.4219,15z/data=!5m1!1e1',
-    sourceName: 'Google Maps Traffic',
-    tags: ['lagos','victoria island','vi','traffic','cbd'],
-    lat: 6.4281, lng: 3.4219,
-    note: 'Victoria Island business district live traffic.',
-    quality: 'traffic'
-  },
-  {
-    id: 'gmap-abeokuta', label: 'Lagos · Lagos-Abeokuta Expressway',
-    city: 'Lagos', area: 'Abule Egba', kind: 'gmap',
-    mapCenter: '6.6351,3.2667', mapZoom: 14,
-    sourceUrl: 'https://www.google.com/maps/@6.6351,3.2667,14z/data=!5m1!1e1',
-    sourceName: 'Google Maps Traffic',
-    tags: ['lagos','abeokuta','expressway','traffic'],
-    lat: 6.6351, lng: 3.2667,
-    note: 'Lagos-Abeokuta Express live traffic.',
-    quality: 'traffic'
-  },
-  {
-    id: 'gmap-lekki-pe', label: 'Lagos · Lekki-Epe Expressway',
-    city: 'Lagos', area: 'Lekki', kind: 'gmap',
-    mapCenter: '6.4447,3.5526', mapZoom: 14,
-    sourceUrl: 'https://www.google.com/maps/@6.4447,3.5526,14z/data=!5m1!1e1',
-    sourceName: 'Google Maps Traffic',
-    tags: ['lagos','lekki','epe','expressway','traffic'],
-    lat: 6.4447, lng: 3.5526,
-    note: 'Lekki-Epe Expressway live traffic conditions.',
-    quality: 'traffic'
-  },
-
-  // --- ABUJA ---
-  {
-    id: 'gmap-abuja-cbd', label: 'Abuja · Central Business District',
-    city: 'Abuja', area: 'CBD', kind: 'gmap',
-    mapCenter: '9.0579,7.4951', mapZoom: 15,
-    sourceUrl: 'https://www.google.com/maps/@9.0579,7.4951,15z/data=!5m1!1e1',
-    sourceName: 'Google Maps Traffic',
-    tags: ['abuja','cbd','traffic','road','federal'],
-    lat: 9.0579, lng: 7.4951,
-    note: 'Abuja CBD — Shehu Shagari Way & Yakubu Gowon Cres live traffic.',
-    quality: 'traffic'
-  },
-  {
-    id: 'gmap-abuja-exp', label: 'Abuja · Airport Expressway',
-    city: 'Abuja', area: 'Lugbe', kind: 'gmap',
-    mapCenter: '9.0064,7.3987', mapZoom: 14,
-    sourceUrl: 'https://www.google.com/maps/@9.0064,7.3987,14z/data=!5m1!1e1',
-    sourceName: 'Google Maps Traffic',
-    tags: ['abuja','airport','expressway','lugbe','traffic'],
-    lat: 9.0064, lng: 7.3987,
-    note: 'Abuja Airport Road live traffic.',
-    quality: 'traffic'
-  },
-  {
-    id: 'gmap-abuja-garki', label: 'Abuja · Garki / Wuse Junction',
-    city: 'Abuja', area: 'Garki', kind: 'gmap',
-    mapCenter: '9.0583,7.4754', mapZoom: 15,
-    sourceUrl: 'https://www.google.com/maps/@9.0583,7.4754,15z/data=!5m1!1e1',
-    sourceName: 'Google Maps Traffic',
-    tags: ['abuja','garki','wuse','junction','traffic'],
-    lat: 9.0583, lng: 7.4754,
-    note: 'Garki & Wuse intersection live traffic.',
-    quality: 'traffic'
-  },
-
-  // --- PORT HARCOURT ---
-  {
-    id: 'gmap-ph-rumuola', label: 'Port Harcourt · Rumuola Road',
-    city: 'Port Harcourt', area: 'Rumuola', kind: 'gmap',
-    mapCenter: '4.8156,7.0498', mapZoom: 14,
-    sourceUrl: 'https://www.google.com/maps/@4.8156,7.0498,14z/data=!5m1!1e1',
-    sourceName: 'Google Maps Traffic',
-    tags: ['port harcourt','rivers','rumuola','traffic','road'],
-    lat: 4.8156, lng: 7.0498,
-    note: 'Rumuola Road Port Harcourt live traffic.',
-    quality: 'traffic'
-  },
-  {
-    id: 'gmap-ph-aba', label: 'Port Harcourt · Aba Road',
-    city: 'Port Harcourt', area: 'GRA', kind: 'gmap',
-    mapCenter: '4.8322,7.0350', mapZoom: 14,
-    sourceUrl: 'https://www.google.com/maps/@4.8322,7.0350,14z/data=!5m1!1e1',
-    sourceName: 'Google Maps Traffic',
-    tags: ['port harcourt','aba','road','traffic','gra'],
-    lat: 4.8322, lng: 7.0350,
-    note: 'Aba Road Port Harcourt live traffic.',
-    quality: 'traffic'
-  },
-
-  // --- KANO ---
-  {
-    id: 'gmap-kano', label: 'Kano · Murtala Muhammad Way',
-    city: 'Kano', area: 'Kano City', kind: 'gmap',
-    mapCenter: '12.0022,8.5920', mapZoom: 14,
-    sourceUrl: 'https://www.google.com/maps/@12.0022,8.5920,14z/data=!5m1!1e1',
-    sourceName: 'Google Maps Traffic',
-    tags: ['kano','murtala','road','traffic','north'],
-    lat: 12.0022, lng: 8.5920,
-    note: 'Kano city center live traffic.',
-    quality: 'traffic'
-  },
-
-  // --- WARRI ---
-  {
-    id: 'gmap-warri', label: 'Warri · Okumagba / Effurun',
-    city: 'Warri', area: 'Effurun', kind: 'gmap',
-    mapCenter: '5.5294,5.7424', mapZoom: 14,
-    sourceUrl: 'https://www.google.com/maps/@5.5294,5.7424,14z/data=!5m1!1e1',
-    sourceName: 'Google Maps Traffic',
-    tags: ['warri','delta','effurun','traffic','road'],
-    lat: 5.5294, lng: 5.7424,
-    note: 'Warri CBD and Effurun live traffic.',
-    quality: 'traffic'
-  },
-
-  // --- ENUGU ---
-  {
-    id: 'gmap-enugu', label: 'Enugu · Agbani Road',
-    city: 'Enugu', area: 'GRA', kind: 'gmap',
-    mapCenter: '6.4584,7.5464', mapZoom: 14,
-    sourceUrl: 'https://www.google.com/maps/@6.4584,7.5464,14z/data=!5m1!1e1',
-    sourceName: 'Google Maps Traffic',
-    tags: ['enugu','agbani','road','traffic','south east'],
-    lat: 6.4584, lng: 7.5464,
-    note: 'Enugu main roads live traffic.',
-    quality: 'traffic'
-  },
-
-  // --- IBADAN ---
-  {
-    id: 'gmap-ibadan', label: 'Ibadan · Challenge/Ring Road',
-    city: 'Ibadan', area: 'Challenge', kind: 'gmap',
-    mapCenter: '7.3775,3.9470', mapZoom: 14,
-    sourceUrl: 'https://www.google.com/maps/@7.3775,3.9470,14z/data=!5m1!1e1',
-    sourceName: 'Google Maps Traffic',
-    tags: ['ibadan','oyo','challenge','ring road','traffic'],
-    lat: 7.3775, lng: 3.9470,
-    note: 'Ibadan Challenge Roundabout live traffic.',
-    quality: 'traffic'
-  },
-
-  // --- YOUTUBE LIVE / NEWS EMBEDS ---
-  {
-    id: 'yt-nta', label: 'NTA News — Nigeria National TV Live',
-    city: 'National', area: 'Broadcast', kind: 'youtube',
-    ytId: 'BSmCPT3YBJA',
-    sourceUrl: 'https://www.youtube.com/@NTANewsNigeria',
-    sourceName: 'NTA Nigeria (YouTube)',
-    tags: ['nta','national','news','live','nigeria','broadcast'],
-    lat: 9.082, lng: 8.6753,
-    note: 'NTA News live broadcast. Contains periodic traffic and road incident reports.',
-    quality: 'broadcast'
-  },
-  {
-    id: 'yt-channels', label: 'Channels TV — Nigeria 24h News Live',
-    city: 'National', area: 'Broadcast', kind: 'youtube',
-    ytId: 'bqHxZXjR2wM',
-    sourceUrl: 'https://www.youtube.com/@ChannelsTelevision',
-    sourceName: 'Channels Television (YouTube)',
-    tags: ['channels','tv','news','live','nigeria','lagos','abuja'],
-    lat: 9.1, lng: 8.7,
-    note: 'Channels Television live 24h feed from Nigeria. Covers road incidents and breaking news.',
-    quality: 'broadcast'
-  },
-  {
-    id: 'yt-arise', label: 'Arise News — Nigeria Live 24h',
-    city: 'National', area: 'Broadcast', kind: 'youtube',
-    ytId: 'UBqbHDvQ86s',
-    sourceUrl: 'https://www.youtube.com/@AriseLiveTv',
-    sourceName: 'Arise News TV (YouTube)',
-    tags: ['arise','news','live','nigeria','abuja','lagos'],
-    lat: 9.05, lng: 8.65,
-    note: 'Arise News live 24h broadcast covering Nigeria roads, incidents, and security.',
-    quality: 'broadcast'
-  }
+  {id:'apm-in',label:'Lagos · Apapa Port — Inbound Gate',city:'Lagos',area:'Apapa',kind:'img-proxy',img:'https://cms-cd.apmterminals.com/apm/api/v1/gatecameras/gate-camera?id=13b8ab33-4dfd-46ad-8085-a113b86c35e3',src:'https://www.apmterminals.com/en/apapa/practical-information/gate-cameras',srcName:'APM Terminals Official',refreshMs:60000,tags:['lagos','apapa','port','inbound','container','terminal','cctv'],lat:6.4314,lng:3.3428,note:'Official APM gate cam — truck queues at inbound gate. Needs CORS proxy.',qual:'live'},
+  {id:'apm-out',label:'Lagos · Apapa Port — Outbound Gate',city:'Lagos',area:'Apapa',kind:'img-proxy',img:'https://cms-cd.apmterminals.com/apm/api/v1/gatecameras/gate-camera?id=10f6ae28-8c9e-46d3-8d13-18aa8396652f',src:'https://www.apmterminals.com/en/apapa/practical-information/gate-cameras',srcName:'APM Terminals Official',refreshMs:60000,tags:['lagos','apapa','port','outbound','container','terminal','cctv'],lat:6.4331,lng:3.3431,note:'Official APM outbound gate cam. Needs CORS proxy.',qual:'live'},
+  {id:'pic-lg1',label:'Lagos · IP Camera 01 (Pictimo)',city:'Lagos',area:'Lagos',kind:'img-proxy',img:'https://images.pictimo.com/storage/live_thumbs/22825.jpg',src:'https://www.pictimo.com/nigeria/lagos/22825/webcam-ip-camera-lagos',srcName:'Pictimo.com',refreshMs:10000,tags:['lagos','cctv','ip cam','pictimo','road','traffic'],lat:6.6035,lng:3.3214,note:'Pictimo Lagos IP cam. Refreshes every 10s. Needs CORS proxy.',qual:'live'},
+  {id:'pic-lg2',label:'Lagos · IP Camera 02 (Pictimo)',city:'Lagos',area:'Lagos',kind:'img-proxy',img:'https://images.pictimo.com/storage/live_thumbs/16934.jpg',src:'https://www.pictimo.com/nigeria/lagos/16934/webcam-ip-camera-lagos',srcName:'Pictimo.com',refreshMs:10000,tags:['lagos','cctv','ip cam','pictimo','urban','traffic'],lat:6.5014,lng:3.4180,note:'Pictimo Lagos urban cam. 10s refresh. Needs proxy.',qual:'live'},
+  {id:'pic-lg3',label:'Lagos · IP Camera 03 (Pictimo)',city:'Lagos',area:'Lagos',kind:'img-proxy',img:'https://images.pictimo.com/storage/live_thumbs/30735.jpg',src:'https://www.pictimo.com/nigeria/lagos/30735/webcam-live-view-in-lagos',srcName:'Pictimo.com',refreshMs:10000,tags:['lagos','cctv','ip cam','pictimo','view'],lat:6.4970,lng:3.3608,note:'Pictimo live view Lagos. Needs proxy.',qual:'live'},
+  {id:'pic-lg4',label:'Lagos · IP Camera 04 (Pictimo)',city:'Lagos',area:'Lagos',kind:'img-proxy',img:'https://images.pictimo.com/storage/live_thumbs/32527.jpg',src:'https://www.pictimo.com/nigeria/lagos/32527/webcam-lagos-live-webcam',srcName:'Pictimo.com',refreshMs:10000,tags:['lagos','cctv','ip cam','pictimo','road'],lat:6.4352,lng:3.4097,note:'Pictimo Lagos road. Needs proxy.',qual:'live'},
+  {id:'pic-lg5',label:'Lagos · IP Camera 05 (Pictimo)',city:'Lagos',area:'Lagos',kind:'img-proxy',img:'https://images.pictimo.com/storage/live_thumbs/38114.jpg',src:'https://www.pictimo.com/nigeria/lagos/38114/webcam-webcam-view-in-lagos',srcName:'Pictimo.com',refreshMs:10000,tags:['lagos','cctv','ip cam','pictimo','view'],lat:6.6018,lng:3.3515,note:'Pictimo webcam Lagos view. Needs proxy.',qual:'live'},
+  {id:'pic-lg6',label:'Lagos · IP Camera 06 (Pictimo)',city:'Lagos',area:'Lagos',kind:'img-proxy',img:'https://images.pictimo.com/storage/live_thumbs/42562.jpg',src:'https://www.pictimo.com/nigeria/lagos/42562/webcam-ip-camera-lagos',srcName:'Pictimo.com',refreshMs:10000,tags:['lagos','cctv','ip cam','pictimo','traffic','street'],lat:6.5481,lng:3.3557,note:'Pictimo Lagos street cam. Needs proxy.',qual:'live'},
+  {id:'pic-ab1',label:'Abuja · IP Camera 01 (Pictimo)',city:'Abuja',area:'Abuja',kind:'img-proxy',img:'https://images.pictimo.com/storage/live_thumbs/16815.jpg',src:'https://www.pictimo.com/nigeria/abuja/16815/webcam-ip-camera-abuja',srcName:'Pictimo.com',refreshMs:10000,tags:['abuja','cctv','ip cam','pictimo','road','traffic'],lat:9.0723,lng:7.4913,note:'Pictimo Abuja IP cam. 10s refresh. Needs proxy.',qual:'live'},
+  {id:'pic-ph1',label:'Port Harcourt · IP Camera (Pictimo)',city:'Port Harcourt',area:'PH',kind:'img-proxy',img:'https://images.pictimo.com/storage/live_thumbs/15445.jpg',src:'https://www.pictimo.com/nigeria/port-harcourt/15445/webcam-ip-camera-port-harcourt',srcName:'Pictimo.com',refreshMs:10000,tags:['port harcourt','rivers','cctv','ip cam','pictimo','traffic'],lat:4.8156,lng:7.0498,note:'Pictimo Port Harcourt cam. Needs proxy.',qual:'live'},
+  {id:'pic-or1',label:'Orerokpe · IP Camera (Pictimo)',city:'Orerokpe',area:'Delta',kind:'img-proxy',img:'https://images.pictimo.com/storage/live_thumbs/24268.jpg',src:'https://www.pictimo.com/nigeria/orerokpe/24268/webcam-ip-camera-orerokpe',srcName:'Pictimo.com',refreshMs:10000,tags:['orerokpe','delta','cctv','ip cam','pictimo','traffic'],lat:5.6372,lng:5.8906,note:'Pictimo Orerokpe Delta State cam. Needs proxy.',qual:'live'},
+  {id:'wc-in',label:'Lagos · Apapa Inbound (WorldCam)',city:'Lagos',area:'Apapa',kind:'iframe',iframeSrc:'https://worldcam.eu/webcams/africa/nigeria/26751-lagos-apapa-container-terminal-inbound',src:'https://worldcam.eu/webcams/africa/nigeria/26751-lagos-apapa-container-terminal-inbound',srcName:'WorldCam.eu',tags:['lagos','apapa','port','worldcam','inbound','container'],lat:6.4318,lng:3.3432,note:'WorldCam page for APM Terminals inbound gate.',qual:'embed'},
+  {id:'wc-out',label:'Lagos · Apapa Outbound (WorldCam)',city:'Lagos',area:'Apapa',kind:'iframe',iframeSrc:'https://worldcam.eu/webcams/africa/nigeria/26750-lagos-apapa-container-terminal-outbound',src:'https://worldcam.eu/webcams/africa/nigeria/26750-lagos-apapa-container-terminal-outbound',srcName:'WorldCam.eu',tags:['lagos','apapa','port','worldcam','outbound','container'],lat:6.4322,lng:3.3434,note:'WorldCam page for APM Terminals outbound gate.',qual:'embed'},
+  {id:'gm-3mb',label:'Lagos · Third Mainland Bridge',city:'Lagos',area:'3MB',kind:'gmap',mapQ:'6.5145,3.3944',mapZ:15,src:'https://www.google.com/maps/@6.5145,3.3944,15z/data=!5m1!1e1',srcName:'Google Maps Traffic',tags:['lagos','third mainland','bridge','traffic','road'],lat:6.5145,lng:3.3944,note:'Real-time traffic — Third Mainland Bridge.',qual:'traffic'},
+  {id:'gm-lekki',label:'Lagos · Lekki-Ikoyi Link Bridge',city:'Lagos',area:'Lekki',kind:'gmap',mapQ:'6.4481,3.4219',mapZ:15,src:'https://www.google.com/maps/@6.4481,3.4219,15z/data=!5m1!1e1',srcName:'Google Maps Traffic',tags:['lagos','lekki','ikoyi','bridge','traffic'],lat:6.4481,lng:3.4219,note:'Lekki-Ikoyi Bridge live traffic.',qual:'traffic'},
+  {id:'gm-marina',label:'Lagos · Carter Bridge / Marina Rd',city:'Lagos',area:'Lagos Island',kind:'gmap',mapQ:'6.4542,3.3947',mapZ:15,src:'https://www.google.com/maps/@6.4542,3.3947,15z/data=!5m1!1e1',srcName:'Google Maps Traffic',tags:['lagos','marina','carter','bridge','island'],lat:6.4542,lng:3.3947,note:'Marina Road & Carter Bridge traffic.',qual:'traffic'},
+  {id:'gm-oshodi',label:'Lagos · Oshodi-Apapa Expressway',city:'Lagos',area:'Oshodi',kind:'gmap',mapQ:'6.5561,3.3239',mapZ:14,src:'https://www.google.com/maps/@6.5561,3.3239,14z/data=!5m1!1e1',srcName:'Google Maps Traffic',tags:['lagos','oshodi','apapa','expressway','traffic'],lat:6.5561,lng:3.3239,note:'Oshodi-Apapa Expressway real-time traffic.',qual:'traffic'},
+  {id:'gm-allen',label:'Lagos · Allen Avenue, Ikeja',city:'Lagos',area:'Ikeja',kind:'gmap',mapQ:'6.6018,3.3515',mapZ:15,src:'https://www.google.com/maps/@6.6018,3.3515,15z/data=!5m1!1e1',srcName:'Google Maps Traffic',tags:['lagos','allen','ikeja','avenue','traffic'],lat:6.6018,lng:3.3515,note:'Allen Avenue & Ikeja CBD live traffic.',qual:'traffic'},
+  {id:'gm-ikorodu',label:'Lagos · Ikorodu Road (BRT)',city:'Lagos',area:'Ikorodu',kind:'gmap',mapQ:'6.5786,3.3858',mapZ:14,src:'https://www.google.com/maps/@6.5786,3.3858,14z/data=!5m1!1e1',srcName:'Google Maps Traffic',tags:['lagos','ikorodu','road','brt','traffic'],lat:6.5786,lng:3.3858,note:'Ikorodu Road BRT corridor.',qual:'traffic'},
+  {id:'gm-vi',label:'Lagos · Victoria Island (VI)',city:'Lagos',area:'Victoria Island',kind:'gmap',mapQ:'6.4281,3.4219',mapZ:15,src:'https://www.google.com/maps/@6.4281,3.4219,15z/data=!5m1!1e1',srcName:'Google Maps Traffic',tags:['lagos','victoria island','vi','traffic','cbd'],lat:6.4281,lng:3.4219,note:'Victoria Island CBD live traffic.',qual:'traffic'},
+  {id:'gm-lekpe',label:'Lagos · Lekki-Epe Expressway',city:'Lagos',area:'Lekki Phase 2',kind:'gmap',mapQ:'6.4447,3.5526',mapZ:14,src:'https://www.google.com/maps/@6.4447,3.5526,14z/data=!5m1!1e1',srcName:'Google Maps Traffic',tags:['lagos','lekki','epe','expressway','ajah','traffic'],lat:6.4447,lng:3.5526,note:'Lekki-Epe Expressway live traffic.',qual:'traffic'},
+  {id:'gm-abeokuta',label:'Lagos · Lagos-Abeokuta Expressway',city:'Lagos',area:'Abule Egba',kind:'gmap',mapQ:'6.6351,3.2667',mapZ:14,src:'https://www.google.com/maps/@6.6351,3.2667,14z/data=!5m1!1e1',srcName:'Google Maps Traffic',tags:['lagos','abeokuta','expressway','sango','traffic'],lat:6.6351,lng:3.2667,note:'Lagos-Abeokuta Expressway.',qual:'traffic'},
+  {id:'gm-alapere',label:'Lagos · Alapere / Ogudu Road',city:'Lagos',area:'Ogudu',kind:'gmap',mapQ:'6.5889,3.4058',mapZ:15,src:'https://www.google.com/maps/@6.5889,3.4058,15z/data=!5m1!1e1',srcName:'Google Maps Traffic',tags:['lagos','alapere','ogudu','traffic','road'],lat:6.5889,lng:3.4058,note:'Alapere & Ogudu Road live traffic.',qual:'traffic'},
+  {id:'gm-ab-cbd',label:'Abuja · Central Business District',city:'Abuja',area:'CBD',kind:'gmap',mapQ:'9.0579,7.4951',mapZ:15,src:'https://www.google.com/maps/@9.0579,7.4951,15z/data=!5m1!1e1',srcName:'Google Maps Traffic',tags:['abuja','cbd','traffic','road','federal','maitama'],lat:9.0579,lng:7.4951,note:'Abuja CBD — Shehu Shagari Way.',qual:'traffic'},
+  {id:'gm-ab-air',label:'Abuja · Airport Expressway',city:'Abuja',area:'Lugbe',kind:'gmap',mapQ:'9.0064,7.3987',mapZ:14,src:'https://www.google.com/maps/@9.0064,7.3987,14z/data=!5m1!1e1',srcName:'Google Maps Traffic',tags:['abuja','airport','expressway','lugbe','traffic'],lat:9.0064,lng:7.3987,note:'Abuja Airport Road.',qual:'traffic'},
+  {id:'gm-ab-garki',label:'Abuja · Garki / Wuse Junction',city:'Abuja',area:'Garki',kind:'gmap',mapQ:'9.0583,7.4754',mapZ:15,src:'https://www.google.com/maps/@9.0583,7.4754,15z/data=!5m1!1e1',srcName:'Google Maps Traffic',tags:['abuja','garki','wuse','junction','traffic'],lat:9.0583,lng:7.4754,note:'Garki & Wuse intersection.',qual:'traffic'},
+  {id:'gm-ph-rum',label:'Port Harcourt · Rumuola / Ada-George',city:'Port Harcourt',area:'Rumuola',kind:'gmap',mapQ:'4.8156,7.0498',mapZ:14,src:'https://www.google.com/maps/@4.8156,7.0498,14z/data=!5m1!1e1',srcName:'Google Maps Traffic',tags:['port harcourt','rivers','rumuola','ada george','traffic'],lat:4.8156,lng:7.0498,note:'Port Harcourt Rumuola Road.',qual:'traffic'},
+  {id:'gm-ph-aba',label:'Port Harcourt · Aba Road / GRA',city:'Port Harcourt',area:'GRA',kind:'gmap',mapQ:'4.8322,7.0350',mapZ:14,src:'https://www.google.com/maps/@4.8322,7.0350,14z/data=!5m1!1e1',srcName:'Google Maps Traffic',tags:['port harcourt','aba road','gra','rivers','traffic'],lat:4.8322,lng:7.0350,note:'Aba Road Port Harcourt.',qual:'traffic'},
+  {id:'gm-kano',label:'Kano · Murtala Muhammad Way',city:'Kano',area:'Kano City',kind:'gmap',mapQ:'12.0022,8.5920',mapZ:14,src:'https://www.google.com/maps/@12.0022,8.5920,14z/data=!5m1!1e1',srcName:'Google Maps Traffic',tags:['kano','murtala','road','north','traffic'],lat:12.0022,lng:8.5920,note:'Kano city center roads.',qual:'traffic'},
+  {id:'gm-warri',label:'Warri · Effurun / Okumagba Ave',city:'Warri',area:'Effurun',kind:'gmap',mapQ:'5.5294,5.7424',mapZ:14,src:'https://www.google.com/maps/@5.5294,5.7424,14z/data=!5m1!1e1',srcName:'Google Maps Traffic',tags:['warri','delta','effurun','okumagba','traffic'],lat:5.5294,lng:5.7424,note:'Warri Effurun live traffic.',qual:'traffic'},
+  {id:'gm-benin',label:'Benin City · Ring Road',city:'Benin City',area:'Ring Rd',kind:'gmap',mapQ:'6.3350,5.6270',mapZ:14,src:'https://www.google.com/maps/@6.3350,5.6270,14z/data=!5m1!1e1',srcName:'Google Maps Traffic',tags:['benin city','edo','ring road','traffic'],lat:6.3350,lng:5.6270,note:'Benin City Ring Road.',qual:'traffic'},
+  {id:'gm-ibadan',label:'Ibadan · Challenge / Dugbe',city:'Ibadan',area:'Challenge',kind:'gmap',mapQ:'7.3775,3.9470',mapZ:14,src:'https://www.google.com/maps/@7.3775,3.9470,14z/data=!5m1!1e1',srcName:'Google Maps Traffic',tags:['ibadan','oyo','challenge','dugbe','traffic'],lat:7.3775,lng:3.9470,note:'Ibadan Challenge & Dugbe.',qual:'traffic'},
+  {id:'gm-enugu',label:'Enugu · Agbani Road / Independence',city:'Enugu',area:'GRA',kind:'gmap',mapQ:'6.4584,7.5464',mapZ:14,src:'https://www.google.com/maps/@6.4584,7.5464,14z/data=!5m1!1e1',srcName:'Google Maps Traffic',tags:['enugu','agbani','independence layout','traffic'],lat:6.4584,lng:7.5464,note:'Enugu major roads.',qual:'traffic'},
+  {id:'gm-onitsha',label:'Onitsha · Bridge Head / Upper Iweka',city:'Onitsha',area:'Bridgehead',kind:'gmap',mapQ:'6.1522,6.7870',mapZ:14,src:'https://www.google.com/maps/@6.1522,6.7870,14z/data=!5m1!1e1',srcName:'Google Maps Traffic',tags:['onitsha','anambra','bridge','upper iweka','market','traffic'],lat:6.1522,lng:6.7870,note:'Onitsha Niger Bridge Head — notorious bottleneck.',qual:'traffic'},
+  {id:'yt-channels',label:'Channels Television — Nigeria 24h Live',city:'National',area:'Broadcast',kind:'youtube',ytId:'bqHxZXjR2wM',src:'https://www.youtube.com/@ChannelsTelevision',srcName:'Channels TV (YouTube)',tags:['channels','tv','news','live','nigeria','lagos','abuja','traffic','broadcast'],lat:6.4355,lng:3.4510,note:'Channels TV live — covers road incidents, traffic, breaking news.',qual:'broadcast'},
+  {id:'yt-nta',label:'NTA News — National TV Live',city:'National',area:'Broadcast',kind:'youtube',ytId:'BSmCPT3YBJA',src:'https://www.youtube.com/@NTANewsNigeria',srcName:'NTA Nigeria (YouTube)',tags:['nta','national','news','live','nigeria','broadcast'],lat:9.0720,lng:7.4859,note:'NTA News 24h — official Nigerian national TV.',qual:'broadcast'},
+  {id:'yt-arise',label:'Arise News — Nigeria Live 24h',city:'National',area:'Broadcast',kind:'youtube',ytId:'UBqbHDvQ86s',src:'https://www.youtube.com/@AriseLiveTv',srcName:'Arise News (YouTube)',tags:['arise','news','live','nigeria','abuja','broadcast'],lat:9.082,lng:8.6753,note:'Arise News 24h broadcast.',qual:'broadcast'},
 ];
 
-// =====================================================================
-//  STATE
-// =====================================================================
-const S = {
-  cards: new Map(),
-  map: null,
-  markers: [],
-  paused: false,
-  sound: true,
-  ctx: null,
-  interacted: false,
-  alertCount: 0
-};
+const ST={cards:new Map(),map:null,markers:[],paused:false,sound:true,audioCtx:null,interacted:false};
+const canvasEl=document.getElementById('mc');
+const mCtx=canvasEl.getContext('2d',{willReadFrequently:true});
+const $=id=>document.getElementById(id);
+const now=()=>Date.now();
+function watTime(){return new Intl.DateTimeFormat('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit',timeZone:'Africa/Lagos'}).format(new Date())}
+function watHour(){return +new Intl.DateTimeFormat('en-GB',{hour:'2-digit',hour12:false,timeZone:'Africa/Lagos'}).format(new Date())}
+function isNight(h){return h>=20||h<=5}
+function proxied(url){return PROXY_URL?PROXY_URL+encodeURIComponent(url):url}
+function needsProxy(cam){return cam.kind==='img-proxy'}
 
-const $ = id => document.getElementById(id);
-const canvas = $('analysisCanvas');
-const canvasCtx = canvas.getContext('2d', { willReadFrequently: true });
-const toastStack = $('toastStack');
-const alertLogEl = $('alertLog');
-let alertLogEmpty = true;
-
-// =====================================================================
-//  CLOCK
-// =====================================================================
-function formatWAT() {
-  return new Intl.DateTimeFormat('en-GB', { hour:'2-digit', minute:'2-digit', second:'2-digit', timeZone:'Africa/Lagos' }).format(new Date());
-}
-function getWATHour() {
-  return +new Intl.DateTimeFormat('en-GB', { hour:'2-digit', hour12:false, timeZone:'Africa/Lagos' }).format(new Date());
-}
-function isNight(h) { return h >= 20 || h <= 5; }
-setInterval(() => $('pillClock').textContent = `${formatWAT()} WAT`, 1000);
-
-// =====================================================================
-//  BUILD CAMERA CARDS
-// =====================================================================
-function qualityTag(q) {
-  if (q === 'live')      return { cls: '', label: 'LIVE CAM' };
-  if (q === 'traffic')   return { cls: 'blue', label: 'TRAFFIC MAP' };
-  if (q === 'broadcast') return { cls: 'amber', label: 'LIVE TV' };
-  return { cls: '', label: 'FEED' };
+function applyProxy(url){
+  PROXY_URL=url.trim();
+  if(PROXY_URL&&!PROXY_URL.endsWith('=')&&!PROXY_URL.endsWith('?')){PROXY_URL+=PROXY_URL.includes('?')?'&url=':'?url=';}
+  localStorage.setItem('ng_proxy',PROXY_URL);
+  updateProxyUI();
+  for(const rt of ST.cards.values())if(needsProxy(rt.cam))doRefresh(rt,true);
 }
 
-function buildCard(cam) {
-  const article = document.createElement('article');
-  article.className = 'cam-card';
-  article.id = `card-${cam.id}`;
-  article.dataset.keywords = [cam.label, cam.city, cam.area, cam.sourceName, ...cam.tags].join(' ').toLowerCase();
+function updateProxyUI(){
+  const banner=$('proxyBanner'),status=$('proxyStatus');
+  if(PROXY_URL){
+    banner.className='proxy-banner ok';
+    status.textContent='✓ Proxy active — Pictimo + APM feeds unlocked!';
+    $('proxyInput').value=PROXY_URL;
+    for(const rt of ST.cards.values()){
+      const b=rt.article.querySelector('.proxy-badge');
+      if(b&&needsProxy(rt.cam))b.className='proxy-badge ok';
+    }
+  }else{
+    banner.className='proxy-banner';
+    status.textContent='No proxy — Pictimo/APM feeds CORS-blocked without it';
+  }
+}
 
-  const qt = qualityTag(cam.quality);
+const QTAG={live:['tag-g','LIVE CAM'],traffic:['tag-b','TRAFFIC MAP'],broadcast:['tag-a','LIVE TV'],embed:['tag-o','EMBED']};
 
-  // HEAD
-  article.innerHTML = `
-    <div class="cam-head">
-      <div class="cam-info">
-        <div class="cam-label">${cam.label}</div>
-        <div class="cam-meta">
-          <span class="tag">${cam.city}</span>
-          <span class="tag ${qt.cls}">${qt.label}</span>
-          <span class="cam-src">${cam.sourceName}</span>
-        </div>
-      </div>
-      <div class="cam-btns">
-        <button class="cam-btn" data-act="pause">⏸</button>
-        <button class="cam-btn" data-act="refresh">↺</button>
-        <button class="cam-btn" data-act="source" title="Open source">↗</button>
-      </div>
-    </div>
-    <div class="feed-shell" id="shell-${cam.id}">
-      <div class="feed-loading" id="loading-${cam.id}"></div>
-      <div class="feed-error" id="error-${cam.id}">
-        <div class="err-icon">📡</div>
-        <div class="err-msg">Feed unavailable or CORS-blocked.<br>
-          <a href="${cam.sourceUrl}" target="_blank" rel="noopener">Open source directly →</a></div>
-      </div>
-      <div class="feed-hud" id="hud-${cam.id}">
-        <div class="hud-live">
-          <div class="hud-pulse" id="pulse-${cam.id}"></div>
-          <span class="hud-status" id="hudStatus-${cam.id}">Connecting…</span>
-        </div>
-        <span id="hudTime-${cam.id}">--:--</span>
-      </div>
-    </div>
-    <div class="cam-stats">
-      <div class="stat">
-        <span class="stat-lbl">Motion</span>
-        <span class="stat-val" id="motionVal-${cam.id}">—</span>
-        <div class="motion-bar"><span id="motionBar-${cam.id}"></span></div>
-      </div>
-      <div class="stat">
-        <span class="stat-lbl">Signal</span>
-        <span class="stat-val" id="signalVal-${cam.id}">Checking</span>
-        <span class="stat-note">${cam.note.slice(0, 55)}…</span>
-      </div>
-      <div class="stat">
-        <span class="stat-lbl">Alert</span>
-        <span class="stat-val" id="alertVal-${cam.id}">Nominal</span>
-      </div>
-    </div>
-  `;
-
+function buildCard(cam){
+  const article=document.createElement('article');
+  article.className='cam-card';
+  article.id='card-'+cam.id;
+  article.dataset.kw=[cam.label,cam.city,cam.area,cam.srcName,...cam.tags].join(' ').toLowerCase();
+  const pn=needsProxy(cam);
+  const [qtc,qtl]=QTAG[cam.qual]||['tag-g','FEED'];
+  const pb=pn?`<div class="proxy-badge ${PROXY_URL?'ok':''}">${PROXY_URL?'⚡ PROXY':'⚠ NEEDS PROXY'}</div>`:'';
+  article.innerHTML=`<div class="cam-head"><div><div class="cam-title">${cam.label}</div><div class="cam-meta"><span class="tag tag-g">${cam.city}</span><span class="tag ${qtc}">${qtl}</span><span class="cam-src">${cam.srcName}</span></div></div><div class="cam-btns"><button class="ic-btn" data-a="pause">⏸</button><button class="ic-btn" data-a="refresh">↺</button><button class="ic-btn" data-a="src">↗</button></div></div><div class="feed-shell" id="sh-${cam.id}"><div class="feed-shimmer" id="shim-${cam.id}"></div><div class="feed-err" id="err-${cam.id}"><div class="err-icon">📡</div><div class="err-text">Feed blocked or unavailable.<br><a href="${cam.src}" target="_blank" rel="noopener">Open source directly →</a>${pn?'<div class="err-proxy">⚠ Set CORS Proxy URL in the header above to unlock this feed</div>':''}</div></div>${pb}<div class="feed-hud" id="hud-${cam.id}"><div class="hud-l"><div class="hud-dot" id="hdot-${cam.id}"></div><span class="hud-status" id="hst-${cam.id}">Connecting…</span></div><span id="htim-${cam.id}">--</span></div></div><div class="cam-stats"><div class="stat"><span class="s-lbl">Motion</span><span class="s-val" id="smot-${cam.id}">—</span><div class="m-bar"><span id="sbar-${cam.id}"></span></div></div><div class="stat"><span class="s-lbl">Signal</span><span class="s-val" id="ssig-${cam.id}">Checking</span><span class="s-note">${cam.note.substring(0,58)}${cam.note.length>58?'…':''}</span></div><div class="stat"><span class="s-lbl">Alert</span><span class="s-val" id="salt-${cam.id}">Nominal</span></div></div>`;
   $('camGrid').appendChild(article);
 
-  const shell    = $(`shell-${cam.id}`);
-  const loadEl   = $(`loading-${cam.id}`);
-  const errEl    = $(`error-${cam.id}`);
-  const hudStatusEl = $(`hudStatus-${cam.id}`);
-  const hudTimeEl   = $(`hudTime-${cam.id}`);
-  const pulseEl     = $(`pulse-${cam.id}`);
-  const motionValEl = $(`motionVal-${cam.id}`);
-  const motionBarEl = $(`motionBar-${cam.id}`);
-  const signalValEl = $(`signalVal-${cam.id}`);
-  const alertValEl  = $(`alertVal-${cam.id}`);
+  const shimEl=$('shim-'+cam.id);
+  const errEl=$('err-'+cam.id);
+  let mediaEl=null;
 
-  let mediaEl = null;
-
-  // --- Build media element ---
-  if (cam.kind === 'img-live') {
-    mediaEl = document.createElement('img');
-    mediaEl.className = 'feed-frame';
-    mediaEl.alt = cam.label;
-    mediaEl.crossOrigin = 'anonymous';
-    mediaEl.referrerPolicy = 'no-referrer';
-    mediaEl.style.background = '#020804';
-    mediaEl.addEventListener('load', () => {
-      loadEl.style.display = 'none';
-      errEl.classList.remove('show');
-      hudStatusEl.textContent = 'Live Snapshot';
-      hudTimeEl.textContent = formatWAT();
-      pulseEl.className = 'hud-pulse';
-      signalValEl.textContent = 'Good signal';
-    });
-    mediaEl.addEventListener('error', () => {
-      loadEl.style.display = 'none';
-      errEl.classList.add('show');
-      pulseEl.className = 'hud-pulse dead';
-      hudStatusEl.textContent = 'Feed offline';
-      signalValEl.textContent = 'No signal';
-      alertValEl.textContent = 'Offline';
-      article.classList.add('alert-signal');
-    });
-    shell.insertBefore(mediaEl, loadEl);
-
-  } else if (cam.kind === 'gmap') {
-    mediaEl = document.createElement('iframe');
-    mediaEl.className = 'feed-frame';
-    mediaEl.loading = 'lazy';
-    mediaEl.allow = 'fullscreen';
-    // Google Maps embed with traffic layer
-    const q = encodeURIComponent(`${cam.area}, ${cam.city}, Nigeria`);
-    mediaEl.src = `https://www.google.com/maps/embed/v1/place?key=AIzaSyD-9tSrke72PouQMnMX-a7eZSW0jkFMBWY&q=${q}&zoom=${cam.mapZoom || 14}&maptype=roadmap`;
-    // Fallback: use standard embed without API key
-    mediaEl.src = `https://maps.google.com/maps?q=${cam.mapCenter}&z=${cam.mapZoom || 14}&layer=t&output=embed`;
-    mediaEl.addEventListener('load', () => {
-      loadEl.style.display = 'none';
-      hudStatusEl.textContent = 'Traffic layer live';
-      pulseEl.className = 'hud-pulse';
-      signalValEl.textContent = 'Google Maps';
-      alertValEl.textContent = 'Monitoring';
-    });
-    shell.insertBefore(mediaEl, loadEl);
-
-  } else if (cam.kind === 'youtube') {
-    mediaEl = document.createElement('iframe');
-    mediaEl.className = 'feed-frame';
-    mediaEl.loading = 'lazy';
-    mediaEl.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen';
-    mediaEl.allowFullscreen = true;
-    mediaEl.src = `https://www.youtube.com/embed/${cam.ytId}?autoplay=0&mute=1`;
-    mediaEl.addEventListener('load', () => {
-      loadEl.style.display = 'none';
-      hudStatusEl.textContent = 'Broadcast live';
-      pulseEl.className = 'hud-pulse warn';
-      signalValEl.textContent = 'YouTube';
-    });
-    shell.insertBefore(mediaEl, loadEl);
+  function onLoad(){
+    shimEl.style.display='none';
+    errEl.classList.remove('show');
+    setHUD(cam.id,'Feed active','ok',watTime());
+    setSig(cam.id,'Good');
+    const b=article.querySelector('.proxy-badge');
+    if(b&&pn)b.className='proxy-badge ok';
+  }
+  function onErr(){
+    shimEl.style.display='none';
+    errEl.classList.add('show');
+    setHUD(cam.id,'Feed offline','d','--');
+    setSig(cam.id,'No signal');
+    setAlt(cam.id,'Offline');
+    article.classList.add('a-signal');
   }
 
-  // State per card
-  const rt = {
-    cam, article, mediaEl, shell, loadEl, errEl,
-    hudStatusEl, hudTimeEl, pulseEl,
-    motionValEl, motionBarEl, signalValEl, alertValEl,
-    paused: false, prevFrame: null, lastMotion: Date.now(),
-    lastAlertAt: 0, lastAlertType: 'nominal', analysisBlocked: false,
-    refreshTimer: null
-  };
+  if(cam.kind==='img-proxy'){
+    mediaEl=document.createElement('img');
+    mediaEl.className='feed-media';
+    mediaEl.alt=cam.label;
+    mediaEl.crossOrigin='anonymous';
+    mediaEl.referrerPolicy='no-referrer';
+    mediaEl.addEventListener('load',onLoad);
+    mediaEl.addEventListener('error',onErr);
+    $('sh-'+cam.id).insertBefore(mediaEl,shimEl);
+  }else if(cam.kind==='gmap'){
+    mediaEl=document.createElement('iframe');
+    mediaEl.className='feed-media';
+    mediaEl.loading='lazy';
+    mediaEl.allow='fullscreen';
+    mediaEl.src='https://maps.google.com/maps?q='+cam.mapQ+'&z='+cam.mapZ+'&layer=t&output=embed';
+    mediaEl.addEventListener('load',()=>{shimEl.style.display='none';setHUD(cam.id,'Traffic layer live','ok',watTime());setSig(cam.id,'Google Maps');setAlt(cam.id,'Monitoring');$('smot-'+cam.id).textContent='Map mode';});
+    $('sh-'+cam.id).insertBefore(mediaEl,shimEl);
+  }else if(cam.kind==='youtube'){
+    mediaEl=document.createElement('iframe');
+    mediaEl.className='feed-media';
+    mediaEl.loading='lazy';
+    mediaEl.allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen';
+    mediaEl.allowFullscreen=true;
+    mediaEl.src='https://www.youtube.com/embed/'+cam.ytId+'?autoplay=0&mute=1&fs=1';
+    mediaEl.addEventListener('load',()=>{shimEl.style.display='none';setHUD(cam.id,'Broadcast live','w',watTime());setSig(cam.id,'YouTube live');$('smot-'+cam.id).textContent='Broadcast';});
+    $('sh-'+cam.id).insertBefore(mediaEl,shimEl);
+  }else if(cam.kind==='iframe'){
+    mediaEl=document.createElement('iframe');
+    mediaEl.className='feed-media';
+    mediaEl.loading='lazy';
+    mediaEl.src=cam.iframeSrc;
+    mediaEl.addEventListener('load',()=>{shimEl.style.display='none';setHUD(cam.id,'Page embedded','ok',watTime());setSig(cam.id,'Iframe mode');$('smot-'+cam.id).textContent='No analysis';});
+    mediaEl.addEventListener('error',onErr);
+    $('sh-'+cam.id).insertBefore(mediaEl,shimEl);
+  }
 
-  // Buttons
-  article.querySelectorAll('[data-act]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const act = btn.dataset.act;
-      if (act === 'pause') togglePause(rt, btn);
-      if (act === 'refresh') doRefresh(rt, true);
-      if (act === 'source') window.open(cam.sourceUrl, '_blank', 'noopener');
+  article.querySelectorAll('[data-a]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const rt=ST.cards.get(cam.id);if(!rt)return;
+      const act=btn.dataset.a;
+      if(act==='pause')togglePause(rt,btn);
+      if(act==='refresh')doRefresh(rt,true);
+      if(act==='src')window.open(cam.src,'_blank','noopener');
     });
   });
 
-  // Auto refresh for img feeds
-  if (cam.kind === 'img-live') {
-    doRefresh(rt, true);
-    rt.refreshTimer = setInterval(() => doRefresh(rt, false), cam.refreshMs || 60000);
-  }
-
-  S.cards.set(cam.id, rt);
+  const rt={cam,article,mediaEl,shimEl,errEl,paused:false,prevFrame:null,lastMotion:now(),lastAlertAt:0,lastAlertType:'nominal',corsBlocked:false};
+  if(cam.kind==='img-proxy'){doRefresh(rt,true);if(cam.refreshMs)rt.refreshTimer=setInterval(()=>doRefresh(rt,false),cam.refreshMs);}
+  ST.cards.set(cam.id,rt);
 }
 
-function doRefresh(rt, manual) {
-  if (rt.paused && !manual) return;
-  if (rt.cam.kind === 'img-live' && rt.mediaEl) {
-    const sep = rt.cam.imgUrl.includes('?') ? '&' : '?';
-    rt.mediaEl.src = `${rt.cam.imgUrl}${sep}_t=${Date.now()}`;
-    rt.hudTimeEl.textContent = formatWAT();
-    rt.hudStatusEl.textContent = manual ? 'Manual refresh' : 'Auto refresh';
-  }
+function setHUD(id,status,dot,time){
+  const e=$('hst-'+id);if(e)e.textContent=status;
+  const d=$('hdot-'+id);if(d)d.className='hud-dot'+(dot==='ok'?'':dot==='w'?' w':' d');
+  const t=$('htim-'+id);if(t)t.textContent=time;
+}
+function setSig(id,v){const e=$('ssig-'+id);if(e)e.textContent=v}
+function setAlt(id,v){const e=$('salt-'+id);if(e)e.textContent=v}
+function setMot(id,v,p){const e=$('smot-'+id);if(e)e.textContent=v;const b=$('sbar-'+id);if(b)b.style.width=Math.max(2,Math.min(100,p))+'%'}
+
+function doRefresh(rt,manual){
+  if(rt.paused&&!manual)return;
+  if(rt.cam.kind!=='img-proxy')return;
+  if(!rt.mediaEl)return;
+  const base=proxied(rt.cam.img);
+  const sep=base.includes('?')?'&':'?';
+  rt.mediaEl.src=base+sep+'_='+now();
+  setHUD(rt.cam.id,manual?'Manual refresh':'Auto refresh','ok',watTime());
 }
 
-function togglePause(rt, btn) {
-  rt.paused = !rt.paused;
-  btn.textContent = rt.paused ? '▶' : '⏸';
-  btn.classList.toggle('active', rt.paused);
-  if (!rt.paused && rt.cam.kind === 'img-live') doRefresh(rt, true);
+function togglePause(rt,btn){
+  rt.paused=!rt.paused;
+  btn.textContent=rt.paused?'▶':'⏸';
+  btn.classList.toggle('on',rt.paused);
+  if(!rt.paused&&rt.cam.kind==='img-proxy')doRefresh(rt,true);
 }
 
-// =====================================================================
-//  MOTION ANALYSIS (img-live only)
-// =====================================================================
-function analyzeCard(rt) {
-  if (rt.paused || S.paused) return;
-  if (rt.cam.kind !== 'img-live') return;
-  const img = rt.mediaEl;
-  if (!img || !img.complete || !img.naturalWidth) return;
-
+function analyzeCard(rt){
+  if(rt.paused||ST.paused||rt.cam.kind!=='img-proxy')return;
+  const img=rt.mediaEl;
+  if(!img||!img.complete||!img.naturalWidth)return;
   let frame;
-  try {
-    canvasCtx.clearRect(0, 0, 120, 68);
-    canvasCtx.drawImage(img, 0, 0, 120, 68);
-    frame = canvasCtx.getImageData(0, 0, 120, 68);
-  } catch(e) {
-    rt.analysisBlocked = true;
-    rt.signalValEl.textContent = 'CORS blocked';
-    rt.motionValEl.textContent = 'N/A';
-    return;
-  }
-
-  const pix = frame.data;
-  const gray = new Uint8Array(120 * 68);
-  let bright = 0;
-  for (let i = 0, p = 0; i < pix.length; i += 4, p++) {
-    const g = pix[i] * 0.299 + pix[i+1] * 0.587 + pix[i+2] * 0.114;
-    gray[p] = g; bright += g;
-  }
-  bright /= gray.length;
-
-  let changed = 0, diffSum = 0;
-  if (rt.prevFrame) {
-    for (let i = 0; i < gray.length; i++) {
-      const d = Math.abs(gray[i] - rt.prevFrame[i]);
-      diffSum += d;
-      if (d > 16) changed++;
-    }
-  }
-  rt.prevFrame = gray;
-
-  const ratio = changed / gray.length;
-  const avgD = diffSum / gray.length;
-  const motPct = Math.min(100, Math.round(ratio * 200 + avgD * 2.5));
-  const now = Date.now();
-  const hour = getWATHour();
-  const night = isNight(hour);
-
-  if (ratio > 0.01 || avgD > 4) rt.lastMotion = now;
-  const quietMs = now - rt.lastMotion;
-
-  rt.motionBarEl.style.width = `${Math.max(2, motPct)}%`;
-
-  if (bright < 20 || quietMs > 30000) {
-    rt.motionValEl.textContent = 'Low / Stalled';
-    rt.signalValEl.textContent = bright < 20 ? 'Dark frame' : 'Frozen?';
-    rt.alertValEl.textContent = 'Signal risk';
-    rt.article.classList.add('alert-signal');
-    rt.pulseEl.className = 'hud-pulse dead';
-    maybeAlert(rt, 'signal', `${rt.cam.label} — signal risk detected`, 'signal');
-  } else if (night && (ratio > 0.20 || avgD > 22)) {
-    rt.motionValEl.textContent = `Spike ${motPct}%`;
-    rt.signalValEl.textContent = 'Night motion!';
-    rt.alertValEl.textContent = 'Security!';
-    rt.article.classList.add('alert-security');
-    rt.pulseEl.className = 'hud-pulse warn';
-    maybeAlert(rt, 'security', `${rt.cam.label} — night motion spike`, 'security');
-  } else if (ratio > 0.12 || avgD > 16) {
-    rt.motionValEl.textContent = `Heavy ${motPct}%`;
-    rt.signalValEl.textContent = 'High traffic';
-    rt.alertValEl.textContent = 'High Traffic';
-    rt.article.classList.add('alert-traffic');
-    rt.pulseEl.className = 'hud-pulse warn';
-    maybeAlert(rt, 'traffic', `${rt.cam.label} — heavy traffic detected`, 'traffic');
-  } else {
-    const desc = motPct < 10 ? 'Low' : motPct < 40 ? 'Normal' : 'Active';
-    rt.motionValEl.textContent = `${desc} ${motPct}%`;
-    rt.signalValEl.textContent = 'Good';
-    rt.alertValEl.textContent = 'Nominal';
-    rt.article.classList.remove('alert-traffic','alert-signal','alert-security');
-    rt.pulseEl.className = 'hud-pulse';
+  try{mCtx.clearRect(0,0,120,68);mCtx.drawImage(img,0,0,120,68);frame=mCtx.getImageData(0,0,120,68);}
+  catch(e){rt.corsBlocked=true;setSig(rt.cam.id,'CORS blocked — set proxy');setMot(rt.cam.id,'Blocked',0);return;}
+  const pix=frame.data,total=120*68;
+  const gray=new Uint8Array(total);
+  let bright=0;
+  for(let i=0,p=0;i<pix.length;i+=4,p++){const g=pix[i]*.299+pix[i+1]*.587+pix[i+2]*.114;gray[p]=g;bright+=g;}
+  bright/=total;
+  let changed=0,diffSum=0;
+  if(rt.prevFrame){for(let i=0;i<total;i++){const d=Math.abs(gray[i]-rt.prevFrame[i]);diffSum+=d;if(d>15)changed++;}}
+  rt.prevFrame=gray;
+  const ratio=changed/total,avgD=diffSum/total;
+  const motPct=Math.min(100,Math.round(ratio*180+avgD*2.8));
+  const ts=now(),hour=watHour(),night=isNight(hour);
+  if(ratio>0.01||avgD>4)rt.lastMotion=ts;
+  const quietMs=ts-rt.lastMotion;
+  const id=rt.cam.id;
+  if(bright<18||quietMs>30000){
+    setSig(id,bright<18?'Dark frame':'Frozen 30s+');setAlt(id,'Signal risk');setMot(id,'Stalled '+motPct+'%',motPct);
+    setHUD(id,'Signal risk','d',watTime());rt.article.classList.remove('a-traffic','a-security');rt.article.classList.add('a-signal');
+    maybeAlert(rt,'signal','📡 '+rt.cam.label+' — possible frozen/dark feed','r');
+  }else if(night&&(ratio>0.18||avgD>20)){
+    setSig(id,'Night spike!');setAlt(id,'Security alert');setMot(id,'Night spike '+motPct+'%',motPct);
+    setHUD(id,'Security alert!','w',watTime());rt.article.classList.remove('a-traffic','a-signal');rt.article.classList.add('a-security');
+    maybeAlert(rt,'security','🔴 '+rt.cam.label+' — night motion spike','o');
+  }else if(ratio>0.10||avgD>14){
+    setSig(id,'Heavy traffic');setAlt(id,'High traffic');setMot(id,'Heavy '+motPct+'%',motPct);
+    setHUD(id,'High traffic','w',watTime());rt.article.classList.remove('a-signal','a-security');rt.article.classList.add('a-traffic');
+    maybeAlert(rt,'traffic','🚦 '+rt.cam.label+' — heavy traffic','');
+  }else{
+    const desc=motPct<10?'Low':motPct<35?'Normal':'Active';
+    setSig(id,'Good signal');setAlt(id,'Nominal');setMot(id,desc+' '+motPct+'%',motPct);
+    setHUD(id,'Feed monitored','ok',watTime());rt.article.classList.remove('a-traffic','a-signal','a-security');
   }
 }
 
-// =====================================================================
-//  ALERTS
-// =====================================================================
-function maybeAlert(rt, type, msg, tone) {
-  const now = Date.now();
-  if (rt.lastAlertType === type && now - rt.lastAlertAt < 25000) return;
-  rt.lastAlertAt = now;
-  rt.lastAlertType = type;
-  S.alertCount++;
-  pushToast(msg, tone);
-  logAlert(msg, tone);
-  if (S.sound) playTone(tone);
+function maybeAlert(rt,type,msg,tone){
+  const t=now();
+  if(rt.lastAlertType===type&&t-rt.lastAlertAt<25000)return;
+  rt.lastAlertAt=t;rt.lastAlertType=type;
+  pushToast(msg,tone);logAlert(msg,tone);
+  if(ST.sound)playTone(type);
   updatePills();
 }
 
-function pushToast(msg, tone) {
-  const t = document.createElement('article');
-  t.className = `toast ${tone === 'signal' ? 'red' : tone === 'security' ? 'orange' : ''}`;
-  const icons = { traffic:'🚦', signal:'📡', security:'🔴', broadcast:'📺' };
-  t.innerHTML = `<div class="t-title">${icons[tone] || '⚡'} ${tone.toUpperCase()} ALERT</div><div class="t-body">${msg}</div>`;
-  toastStack.prepend(t);
-  setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translateY(10px)'; }, 4500);
-  setTimeout(() => t.remove(), 5100);
+function pushToast(msg,tone){
+  const t=document.createElement('article');
+  t.className='toast '+tone;
+  t.innerHTML='<div class="tt">'+msg.split('—')[0]+'</div><div class="tb">'+msg+'</div>';
+  $('toasts').prepend(t);
+  setTimeout(()=>{t.style.opacity='0';t.style.transform='translateX(18px)';},4600);
+  setTimeout(()=>t.remove(),5100);
 }
 
-function logAlert(msg, tone) {
-  if (alertLogEmpty) {
-    alertLogEl.innerHTML = '';
-    alertLogEmpty = false;
-  }
-  const item = document.createElement('div');
-  item.className = `alert-item ${tone === 'signal' ? 'red' : tone === 'security' ? 'orange' : ''}`;
-  item.innerHTML = `<strong>${formatWAT()}</strong><br>${msg}`;
-  alertLogEl.prepend(item);
-  // Keep log short
-  while (alertLogEl.children.length > 20) alertLogEl.lastChild.remove();
+let alertLogClean=true;
+function logAlert(msg,tone){
+  const logEl=$('alertLog');
+  if(alertLogClean){logEl.innerHTML='<div class="alert-log-wrap"></div>';alertLogClean=false;}
+  const log=logEl.querySelector('.alert-log-wrap');
+  const item=document.createElement('div');
+  item.className='al-item '+tone;
+  item.innerHTML='<strong>'+watTime()+'</strong>'+msg;
+  log.prepend(item);
+  while(log.children.length>30)log.lastChild.remove();
 }
 
-function ensureAudio() {
-  if (!S.interacted) return null;
-  if (!S.ctx) S.ctx = new (window.AudioContext || window.webkitAudioContext)();
-  if (S.ctx.state === 'suspended') S.ctx.resume().catch(() => {});
-  return S.ctx;
+function ensureAudio(){
+  if(!ST.interacted)return null;
+  if(!ST.audioCtx)ST.audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+  if(ST.audioCtx.state==='suspended')ST.audioCtx.resume().catch(()=>{});
+  return ST.audioCtx;
 }
-function playTone(type) {
-  const ctx = ensureAudio(); if (!ctx) return;
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  const freq = { traffic:520, signal:320, security:700 }[type] || 480;
-  osc.type = type === 'security' ? 'square' : 'sine';
-  osc.frequency.value = freq;
-  gain.gain.setValueAtTime(0.0001, ctx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.04, ctx.currentTime + 0.02);
-  gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.3);
-  osc.connect(gain).connect(ctx.destination);
-  osc.start(); osc.stop(ctx.currentTime + 0.35);
+function playTone(type){
+  const ctx=ensureAudio();if(!ctx||!ST.sound)return;
+  const o=ctx.createOscillator(),g=ctx.createGain();
+  o.frequency.value={traffic:520,signal:300,security:700}[type]||480;
+  o.type=type==='security'?'square':'sine';
+  g.gain.setValueAtTime(0.0001,ctx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.04,ctx.currentTime+0.025);
+  g.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+0.32);
+  o.connect(g).connect(ctx.destination);
+  o.start();o.stop(ctx.currentTime+0.36);
 }
 
-// =====================================================================
-//  FILTER / SEARCH
-// =====================================================================
-function applyFilter(q) {
-  const needle = q.trim().toLowerCase();
-  let visible = 0;
-  for (const rt of S.cards.values()) {
-    const show = !needle || rt.article.dataset.keywords.includes(needle);
-    rt.article.classList.toggle('cam-hidden', !show);
-    if (show) visible++;
-  }
-  $('emptyState').style.display = visible ? 'none' : 'block';
-  updatePills();
-}
+const CITY_COLORS={'Lagos':'#00e065','Abuja':'#ffc542','Port Harcourt':'#ff7b3a','Kano':'#3d9bff','Warri':'#ff7b3a','Benin City':'#fb923c','Ibadan':'#f472b6','Enugu':'#c084fc','Onitsha':'#a78bfa','Orerokpe':'#fb923c','National':'#64748b'};
 
-// =====================================================================
-//  MAP (Leaflet)
-// =====================================================================
-function initMap() {
-  S.map = L.map('map', { zoomControl: true }).setView([9.082, 8.6753], 5);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '© OpenStreetMap'
-  }).addTo(S.map);
-
-  const bounds = [];
-  const cityColors = {
-    Lagos:'#2bff7a', Abuja:'#ffcb47', 'Port Harcourt':'#ff8c42',
-    Kano:'#7ab4ff', Warri:'#ff8c42', Enugu:'#c084fc', Ibadan:'#f472b6',
-    National:'#94a3b8'
-  };
-
-  CAMS.forEach(cam => {
-    const color = cityColors[cam.city] || '#94a3b8';
-    const marker = L.circleMarker([cam.lat, cam.lng], {
-      radius: cam.city === 'Lagos' ? 8 : 6,
-      color: '#ffffff22', weight: 1,
-      fillColor: color, fillOpacity: 0.85
-    }).addTo(S.map);
-
-    marker.bindPopup(`
-      <strong>${cam.label}</strong><br>
-      <span style="color:#9bc3a8">${cam.city} · ${cam.sourceName}</span><br>
-      <a class="popup-focus" href="#" data-id="${cam.id}" style="color:#2bff7a">Jump to feed →</a>
-    `);
-
-    S.map.on('popupopen', e => {
-      e.popup.getElement()?.querySelector('[data-id]')?.addEventListener('click', ev => {
-        ev.preventDefault();
-        focusCard(ev.target.dataset.id);
-      }, { once: true });
-    });
-
-    bounds.push([cam.lat, cam.lng]);
-    S.markers.push(marker);
+function initMap(){
+  ST.map=L.map('map',{zoomControl:true}).setView([9.082,8.6753],5);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(ST.map);
+  const bounds=[];
+  CAMS.forEach(cam=>{
+    const color=CITY_COLORS[cam.city]||'#00e065';
+    const radius=cam.city==='Lagos'?8:cam.city==='National'?5:6;
+    const m=L.circleMarker([cam.lat,cam.lng],{radius,color:'rgba(255,255,255,0.12)',weight:1.5,fillColor:color,fillOpacity:0.9}).addTo(ST.map);
+    m.bindPopup('<strong style="color:#fff">'+cam.label+'</strong><br><span style="color:#9dbda8">'+cam.city+' · '+cam.srcName+'</span><br><span class="lp-link" data-id="'+cam.id+'">→ Jump to feed</span>');
+    m.on('popupopen',()=>{setTimeout(()=>{const lk=document.querySelector('.lp-link[data-id="'+cam.id+'"]');if(lk)lk.addEventListener('click',()=>focusCard(cam.id));},50);});
+    ST.markers.push(m);bounds.push([cam.lat,cam.lng]);
   });
-
-  if (bounds.length) S.map.fitBounds(bounds, { padding: [20, 20] });
+  if(bounds.length)ST.map.fitBounds(bounds,{padding:[16,16]});
 }
 
-function focusCard(id) {
-  for (const rt of S.cards.values()) rt.article.classList.remove('focused');
-  const rt = S.cards.get(id);
-  if (!rt) return;
+function focusCard(id){
+  for(const rt of ST.cards.values())rt.article.classList.remove('focused');
+  const rt=ST.cards.get(id);if(!rt)return;
   rt.article.classList.add('focused');
-  rt.article.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  setTimeout(() => rt.article.classList.remove('focused'), 3000);
+  rt.article.scrollIntoView({behavior:'smooth',block:'center'});
+  setTimeout(()=>rt.article.classList.remove('focused'),3200);
 }
 
-// =====================================================================
-//  GLOBAL CONTROLS
-// =====================================================================
-function updatePills() {
-  const all = [...S.cards.values()];
-  const visible = all.filter(r => !r.article.classList.contains('cam-hidden')).length;
-  const alerts = all.filter(r => ['alert-traffic','alert-signal','alert-security'].some(c => r.article.classList.contains(c))).length;
-  $('pillFeeds').textContent = `${CAMS.length} feeds`;
-  $('pillVisible').textContent = `${visible} visible`;
-  $('pillAlerts').textContent = `${alerts} alerts`;
-  $('dotAlerts').className = alerts > 0 ? 'dot warn' : 'dot';
+function applyFilter(q){
+  const needle=q.trim().toLowerCase();let vis=0;
+  for(const rt of ST.cards.values()){const show=!needle||rt.article.dataset.kw.includes(needle);rt.article.classList.toggle('hidden',!show);if(show)vis++;}
+  $('empty').style.display=vis?'none':'block';
+  updatePills();
 }
 
-function attachControls() {
-  ['pointerdown','keydown','touchstart'].forEach(ev => {
-    window.addEventListener(ev, () => { S.interacted = true; ensureAudio(); }, { once: true, passive: true });
-  });
-
-  $('searchInput').addEventListener('input', e => applyFilter(e.target.value));
-
-  $('btnPauseAll').addEventListener('click', () => {
-    S.paused = !S.paused;
-    $('btnPauseAll').textContent = S.paused ? '▶ Resume All' : '⏸ Pause All';
-    $('btnPauseAll').classList.toggle('active', S.paused);
-  });
-
-  $('btnRefreshAll').addEventListener('click', () => {
-    for (const rt of S.cards.values()) doRefresh(rt, true);
-  });
-
-  $('btnSound').addEventListener('click', () => {
-    S.sound = !S.sound;
-    $('btnSound').textContent = S.sound ? '🔊 Sound' : '🔇 Muted';
-    $('btnSound').classList.toggle('active', S.sound);
-  });
-
-  $('btnFS').addEventListener('click', () => {
-    if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
-    else document.exitFullscreen().catch(() => {});
-  });
-
-  $('btnFitMap').addEventListener('click', () => {
-    if (S.map && S.markers.length) {
-      S.map.fitBounds(L.latLngBounds(S.markers.map(m => m.getLatLng())), { padding:[20,20] });
-    }
-  });
+function updatePills(){
+  const all=[...ST.cards.values()];
+  const alerting=all.filter(r=>r.article.classList.contains('a-traffic')||r.article.classList.contains('a-signal')||r.article.classList.contains('a-security')).length;
+  const liveImgs=CAMS.filter(c=>c.kind==='img-proxy').length;
+  $('pFeeds').textContent=CAMS.length+' feeds';
+  $('pLive').textContent=liveImgs+' img cams';
+  $('pAlerts').textContent=alerting+' alert'+(alerting!==1?'s':'');
+  $('dAlerts').className=alerting>0?'dot w':'dot';
+  $('pClock').textContent=watTime()+' WAT';
 }
 
-// =====================================================================
-//  INIT
-// =====================================================================
-function init() {
+[1,2,3,4].forEach(n=>{
+  const h=$('sh'+n),c=$('sc'+n);if(!h||!c)return;
+  h.addEventListener('click',()=>{const open=c.style.display!=='none';c.style.display=open?'none':'block';h.classList.toggle('closed',!open);});
+});
+
+function attachEvents(){
+  ['pointerdown','keydown','touchstart'].forEach(ev=>window.addEventListener(ev,()=>{ST.interacted=true;ensureAudio();},{once:true,passive:true}));
+  $('searchInput').addEventListener('input',e=>applyFilter(e.target.value));
+  $('btnPause').addEventListener('click',()=>{ST.paused=!ST.paused;$('btnPause').textContent=ST.paused?'▶ Resume All':'⏸ Pause All';$('btnPause').classList.toggle('on',!ST.paused);});
+  $('btnRefresh').addEventListener('click',()=>{for(const rt of ST.cards.values())doRefresh(rt,true);});
+  $('btnSound').addEventListener('click',()=>{ST.sound=!ST.sound;$('btnSound').textContent=ST.sound?'🔊 Sound':'🔇 Muted';$('btnSound').classList.toggle('on',ST.sound);});
+  $('btnFS').addEventListener('click',()=>{if(!document.fullscreenElement)document.documentElement.requestFullscreen().catch(()=>{});else document.exitFullscreen().catch(()=>{});});
+  $('btnFit').addEventListener('click',()=>{if(ST.map&&ST.markers.length)ST.map.fitBounds(L.latLngBounds(ST.markers.map(m=>m.getLatLng())),{padding:[16,16]});});
+  $('btnSetProxy').addEventListener('click',()=>applyProxy($('proxyInput').value));
+  $('proxyInput').addEventListener('keydown',e=>{if(e.key==='Enter')applyProxy($('proxyInput').value);});
+  if(PROXY_URL){$('proxyInput').value=PROXY_URL;updateProxyUI();}
+}
+
+function init(){
   CAMS.forEach(buildCard);
-  attachControls();
+  attachEvents();
   initMap();
   updatePills();
-  $('pillClock').textContent = `${formatWAT()} WAT`;
-
-  // Analysis sweep every 5s
-  setInterval(() => {
-    for (const rt of S.cards.values()) analyzeCard(rt);
-    updatePills();
-  }, 5000);
+  setInterval(()=>{for(const rt of ST.cards.values())analyzeCard(rt);updatePills();},5000);
+  setInterval(()=>{$('pClock').textContent=watTime()+' WAT';},1000);
 }
-
 init();
 </script>
 </body>
